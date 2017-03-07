@@ -60,13 +60,13 @@ namespace muon_pog
 		      const std::string & trackType)
   {
 
-    if (trackType == "PF")         return muon.fits.at(muons_pog::MuonFitType::DEFAULT).charge;
-    else if (trackType == "TUNEP") return muon.fits.at(muons_pog::MuonFitType::TUNEP).charge;
-    else if (trackType == "GLB")   return muon.fits.at(muons_pog::MuonFitType::GLB).charge;
-    else if (trackType == "INNER") return muon.fits.at(muons_pog::MuonFitType::INNER).charge;
-    else if (trackType == "PICKY") return muon.fits.at(muons_pog::MuonFitType::PICKY).charge;
-    else if (trackType == "DYT") return muon.fits.at(muons_pog::MuonFitType::DYT).charge;
-    else if (trackType == "TPFMS") return muon.fits.at(muons_pog::MuonFitType::TPFMS).charge;
+    if (trackType == "PF")         return muon.fits.at(muon_pog::MuonFitType::DEFAULT).charge;
+    else if (trackType == "TUNEP") return muon.fits.at(muon_pog::MuonFitType::TUNEP).charge;
+    else if (trackType == "GLB")   return muon.fits.at(muon_pog::MuonFitType::GLB).charge;
+    else if (trackType == "INNER") return muon.fits.at(muon_pog::MuonFitType::INNER).charge;
+    else if (trackType == "PICKY") return muon.fits.at(muon_pog::MuonFitType::PICKY).charge;
+    else if (trackType == "DYT") return muon.fits.at(muon_pog::MuonFitType::DYT).charge;
+    else if (trackType == "TPFMS") return muon.fits.at(muon_pog::MuonFitType::TPFMS).charge;
       
     else
       {
@@ -89,19 +89,19 @@ namespace muon_pog
     TLorentzVector result;
     muon_pog::MuonFit fit;
     if (trackType == "PF")
-      fit = muon.fits.at(muons_pog::MuonFitType::DEFAULT)
+      fit = muon.fits.at(muon_pog::MuonFitType::DEFAULT);
     else if (trackType == "TUNEP")
-      fit = muon.fits.at(muons_pog::MuonFitType::TUNEP)
+      fit = muon.fits.at(muon_pog::MuonFitType::TUNEP);
     else if (trackType == "GLB")
-      fit = muon.fits.at(muons_pog::MuonFitType::GLB)
+      fit = muon.fits.at(muon_pog::MuonFitType::GLB);
     else if (trackType == "INNER")
-      fit = muon.fits.at(muons_pog::MuonFitType::INNER)
+      fit = muon.fits.at(muon_pog::MuonFitType::INNER);
     else if (trackType == "PICKY")
-      fit = muon.fits.at(muons_pog::MuonFitType::PICKY)
+      fit = muon.fits.at(muon_pog::MuonFitType::PICKY);
     else if (trackType == "DYT")
-      fit = muon.fits.at(muons_pog::MuonFitType::DYT)
+      fit = muon.fits.at(muon_pog::MuonFitType::DYT);
     else if (trackType == "TPFMS")
-      fit = muon.fits.at(muons_pog::MuonFitType::TPFMS)
+      fit = muon.fits.at(muon_pog::MuonFitType::TPFMS);
     else
       {
 	std::cout << "[Plotter::muonTk]: Invalid track type: "
