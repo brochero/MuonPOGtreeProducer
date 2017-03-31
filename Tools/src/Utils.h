@@ -204,6 +204,46 @@ namespace muon_pog
     return (bestGen && ((motherPdgId == 0) || hasMother(*bestGen,motherPdgId))) ? bestGen : 0;
   }
 
+  // Mother of Best GenMatch
+  Int_t MotherGenMatch(const muon_pog::Muon & muon,
+		       const std::vector<muon_pog::GenParticle>  & gens,
+		       float drCut, float minGenPt = 5.)
+  {
+    
+    TLorentzVector muTk = muonTk(muon,std::string("INNER"));
+    
+    const muon_pog::GenParticle *bestGen = 0;
+    Float_t bestDr = 999.;
+    
+    for (auto & gen : gens)
+      {
+        if (fabs(gen.pdgId) == 13)
+          {
+            Float_t dr = deltaR(muTk.Eta(), muTk.Phi(), gen.eta, gen.phi);
+            if (dr < drCut && dr < bestDr)
+              {
+		bestGen = &gen;
+                bestDr = dr;
+              }
+          }
+      }
+    
+    int motherPdgId=-1;
+    
+    if(bestGen != 0)
+      {
+	int nm = 0;
+	for (auto motherId : bestGen->mothers)
+	  {
+	    motherPdgId = abs(motherId);
+	    nm++;
+	  }
+      }
+    
+    return motherPdgId;
+
+  }
+ 
 
   //From Fede, the function name says it all
   void addUnderFlow(TH1 &hist)
