@@ -87,7 +87,8 @@ namespace muon_pog {
     std::string muon_trackType; // applies to both, tag and probe     
   
     Float_t probe_minPt;
-    Float_t probe_isoLooseWP, probe_isoTightWP;      
+    Float_t iso_LooseWP, iso_TightWP, iso_DeltaBeta;      
+    Float_t IDMedium_CutdXY, IDMedium_CutdZ;
    
     TagAndProbeConfig() {};
     
@@ -107,8 +108,8 @@ namespace muon_pog {
 
   public :
     
-    TString IDName[7] = {"GLB",  "TRK", "LOOSE", "MEDIUM", "TIGHT", "SOFT", "HIGHpT"};
-    enum BinType   {GLB=1, TRK, LOOSE, TIGHT, MEDIUM, SOFT, HIGHpT};
+    TString IDName[8] = {"GLB",  "TRK", "LOOSE", "MEDIUM", "TIGHT", "SOFT", "HIGHpT", "MEDIUMDXYZ"};
+    enum BinType   {GLB=1, TRK, LOOSE, MEDIUM, TIGHT, SOFT, HIGHpT, MEDIUMDXYZ};
     TString region[4] = {"Full", "Barrel", "Endcap", "Overlap"};
     enum BinRegion {Full=1, Barrel, Endcap, Overlap};
     TString isowp[3]  = {"ISONoCut", "ISOLoose", "ISOTight"};  
@@ -238,7 +239,10 @@ int main(int argc, char* argv[]){
       evBranch->SetAddress(&ev);
 
       // Watch number of entries
-      int nEntries = plotter.m_sampleConfig.nEvents > 0 ? plotter.m_sampleConfig.nEvents : tree->GetEntriesFast();
+      int nEntries;
+      if (plotter.m_sampleConfig.nEvents > 0 && 
+	  plotter.m_sampleConfig.nEvents < tree->GetEntriesFast()) nEntries = plotter.m_sampleConfig.nEvents;
+      else nEntries = tree->GetEntriesFast();
 
       std::cout << "[" << argv[0] << "] Number of entries = " << nEntries << std::endl;
 
@@ -247,7 +251,7 @@ int main(int argc, char* argv[]){
       float weight = 1.;
       // Add cross section weight -> To take into account QCD filter efficiencies
       if(plotter.m_sampleConfig.applyReweighting==true)
-	weight *= (plotter.m_sampleConfig.QCDWeight);
+	weight *= (plotter.m_sampleConfig.QCDWeight/nEntries);
       
       std::cout << "Weight per event = " << weight << std::endl;	
 
@@ -293,9 +297,14 @@ muon_pog::TagAndProbeConfig::TagAndProbeConfig(boost::property_tree::ptree::valu
      
       muon_trackType = vt.second.get<std::string>("muon_trackType");
 
+      iso_DeltaBeta  = vt.second.get<Float_t>("iso_DeltaBeta");
+      iso_LooseWP    = vt.second.get<Float_t>("iso_LooseWP");
+      iso_TightWP    = vt.second.get<Float_t>("iso_TightWP");
+
+      IDMedium_CutdXY = vt.second.get<Float_t>("IDMedium_CutdXY");
+      IDMedium_CutdZ  = vt.second.get<Float_t>("IDMedium_CutdZ");
+
       probe_minPt  = vt.second.get<Float_t>("probe_minPt");
-      probe_isoLooseWP = vt.second.get<Float_t>("probe_isoLooseWP");
-      probe_isoTightWP = vt.second.get<Float_t>("probe_isoTightWP");
 
     }
 
@@ -378,7 +387,7 @@ void muon_pog::Plotter::book(TFile *outFile)
   outFile->cd(sampleTag + "/Yields/");
   m_2Dyields["RecoMuon"] = new TH2D("Yields_RecoMuon" ,"Yields " + sampleTag + " RecoMuons ",10,0,10,4,0,4);
   m_2Dyields["RecoMuon"]->SetOption("COLTEXT"); 
-  for (unsigned nid=0; nid<7; nid++) m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(nid+1,IDName[nid]);
+  for (unsigned nid=0; nid<8; nid++) m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(nid+1,IDName[nid]);
   m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(8, "Total Pass Cut");
   m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(9, "Total");
   m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(10, "Total Events (weighted)");
@@ -393,27 +402,45 @@ void muon_pog::Plotter::book(TFile *outFile)
   for (unsigned nre=0; nre<4; nre++) m_2Dyields["GenMuon"]->GetYaxis()->SetBinLabel(nre+1,region[nre]);
   
   
-  for (unsigned nid=0; nid<7; nid++){
+  for (unsigned nid=0; nid<8; nid++){
     outFile->mkdir(sampleTag + "/KinIso_variables/" + IDName[nid]);
     for (unsigned nre=0; nre<4; nre++){
       outFile->mkdir(sampleTag + "/KinIso_variables/" + IDName[nid] + "/" + region[nre]);
       for (unsigned npu=0; npu<4; npu++){
 	outFile->mkdir(sampleTag + "/KinIso_variables/" + IDName[nid] + "/" + region[nre] + "/" + PUr[npu]);
 	outFile->cd   (sampleTag + "/KinIso_variables/" + IDName[nid] + "/" + region[nre] + "/" + PUr[npu]);
-      
+
 	TString IDRegName  = IDName[nid] + "_" + region[nre] + "_" + PUr[npu];
 	TString IDRegTitle = "ID:" + IDName[nid] + " - REGION:" + region[nre] + " - PU:" + PUr[npu];
 	
 	m_plots[IDName[nid]+region[nre]+PUr[npu]+"RelIso"]       = new TH1D ("RelIso_" + IDRegName,     IDRegTitle + " Relative Isolation ; Relative Iso.; # entries", 100, 0., 1.);
 	m_plots[IDName[nid]+region[nre]+PUr[npu]+"RelIsoNoDB"]   = new TH1D ("RelIsoNoDB_" + IDRegName, IDRegTitle + " Relative Isolation w/o #Delta#beta ; Relative Iso. (No #Delta#beta); # entries", 100, 0., 2.);
 
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dXYVsPt"]   = new TProfile("dXYVsPt_" + IDRegName, IDRegTitle + " #Delta XY Vs Pt ; #Delta XY;  p_{T} [GeV]", 200, 0, 2. , 0., 100.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dZVsPt"]    = new TProfile("dZVsPt_"  + IDRegName, IDRegTitle + " #Delta Z Vs Pt ; #Delta Z; p_{T} [GeV]" , 200, 0, 2. , 0., 100.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsdXY"]   = new TProfile("PtVsdXY_" + IDRegName, IDRegTitle + " Pt Vs #Delta XY ; p_{T} [GeV]; #Delta XY [cm]", 100,0., 100, 0., 2.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsdZ"]    = new TProfile("PtVsdZ_"  + IDRegName, IDRegTitle + " Pt Vs #Delta Z ; p_{T} [GeV]; #Delta Z [cm]", 100,0., 100, 0., 2.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsVtx"]   = new TProfile("PtVsVtx_" + IDRegName, IDRegTitle + " Pt Vs #Vtx ; p_{T} [GeV]; N. Vtx", 100,0., 100, 0., 80.);
+
+	m_2Dplots[IDName[nid]+region[nre]+PUr[npu]+"PtVspdgID"]   = new TH2D("PtVspdgID_" + IDRegName, IDRegTitle + " Pt Vs PDG ID ; p_{T} [GeV]; Particle ID", 100,0., 100, 1000, -1., 999.);
+
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsRelIso"]   = new TProfile("VtxVsRelIso_" + IDRegName, IDRegTitle + " Vtx Vs Relative Isolation ; N. Vtx; Relative Iso.", 80, 0., 80., 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsRelIso"]    = new TProfile("PtVsRelIso_"  + IDRegName, IDRegTitle + " Pt Vs Relative Isolation ; p_{T} [GeV]; Relative Iso.", 100,0., 100, 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"EtaVsRelIso"]   = new TProfile("EtaVsRelIso_" + IDRegName, IDRegTitle + " Eta Vs Relative Isolation ; #eta; Relative Iso.", 48, -2.4, 2.4, 0., 1.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dXYVsRelIso"]   = new TProfile("dXYVsRelIso_" + IDRegName, IDRegTitle + " #Delta XY Vs Relative Isolation ; #Delta XY; Relative Iso.", 200, 0, 2. , 0., 1.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dZVsRelIso"]    = new TProfile("dZVsRelIso_"  + IDRegName, IDRegTitle + " #Delta Z Vs Relative Isolation ; #Delta Z; Relative Iso.", 200, 0, 2. , 0., 1.);
+
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsChHadIso"] = new TProfile("VtxVsChHadIso_" + IDRegName, IDRegTitle + " Vtx Vs Charged Hadron Isolation ; N. Vtx; Charged Had. Iso.", 80, 0., 80., 0., 10.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsNeHadIso"] = new TProfile("VtxVsNeHadIso_" + IDRegName, IDRegTitle + " Vtx Vs Neutral Hadron Isolation ; N. Vtx; Neutral Had. Iso.", 80, 0., 80., 0., 10.); 
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsPhIso"]    = new TProfile("VtxVsPhIso_"    + IDRegName, IDRegTitle + " Vtx Vs Photon Isolation ; N. Vtx; Photon Iso.", 80, 0., 80., 0., 60.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsPUIso"]    = new TProfile("VtxVsPUIso_"    + IDRegName, IDRegTitle + " Vtx Vs PU Isolation ; N. Vtx; PU Iso.", 80, 0., 80., 0., 60.);
+
 
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsRelIsoNoDB"]   = new TProfile("VtxVsRelIsoNoDB_" + IDRegName, IDRegTitle + " Vtx Vs Relative Isolation  w/o #Delta#beta ; N. Vtx; Relative Iso. (No #Delta#beta)", 80, 0., 80., 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsRelIsoNoDB"]    = new TProfile("PtVsRelIsoNoDB_"  + IDRegName, IDRegTitle + " Pt Vs Relative Isolation  w/o #Delta#beta ; p_{T} [GeV]; Relative Iso. (No #Delta#beta)", 100,0., 100, 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"EtaVsRelIsoNoDB"]   = new TProfile("EtaVsRelIsoNoDB_" + IDRegName, IDRegTitle + " Eta Vs Relative Isolation  w/o #Delta#beta ; #eta; Relative Iso. (No #Delta#beta)", 48, -2.4, 2.4, 0., 1.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dXYVsRelIsoNoDB"]   = new TProfile("dXYVsRelIsoNoDB_" + IDRegName, IDRegTitle + " #Delta XY Vs Relative Isolation w/o #Delta#beta ; #Delta XY; Relative Iso.", 200, 0, 2. , 0., 1.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dZVsRelIsoNoDB"]    = new TProfile("dZVsRelIsoNoDB_"  + IDRegName, IDRegTitle + " #Delta Z Vs Relative Isolation w/o #Delta#beta ; #Delta Z; Relative Iso.", 200, 0, 2. , 0., 1.);
 	
 	m_plots[IDName[nid]+region[nre]+PUr[npu]+"RelIsoCut"] = new TH1D ("RelIsoCut_" + IDRegName, IDRegTitle + " Relative Isolation Cut ; Relative Iso. Cut; # entries", 101, 0., 1.01);
 	
@@ -423,8 +450,10 @@ void muon_pog::Plotter::book(TFile *outFile)
 	  IDRegTitle = "ID:" + IDName[nid] + " - REGION:" + region[nre] + " - PU:" + PUr[npu] + " - ISO:" + isowp[niso];      
 	  
 	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"Vtx"] = new TH1D ("Vtx_" + IDRegName,  IDRegTitle + " Vtx ; N. Vtx; # entries", 80, 0., 80.);
-	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"Pt"]  = new TH1D ("Pt_" + IDRegName,  IDRegTitle + " Pt ; p_{T} [GeV]; # entries", 100,0., 100);
+	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"Pt"]  = new TH1D ("Pt_"  + IDRegName,  IDRegTitle + " Pt ; p_{T} [GeV]; # entries", 100,0., 100);
 	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"Eta"] = new TH1D ("Eta_" + IDRegName,  IDRegTitle + " Eta ; #eta; # entries", 48, -2.4, 2.4);
+	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"dXY"] = new TH1D ("dXY_" + IDRegName,  IDRegTitle + " #Delta XY ; #Delta XY; # entries", 200, 0, 2.);
+	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"dZ"]  = new TH1D ("dZ_"  + IDRegName,  IDRegTitle + " #Delta Z ; #Delta Z; # entries", 200, 0, 2.);
 	  
 	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"ChHadIso"] = new TH1D ("ChHadIso_" + IDRegName,  IDRegTitle + " Charged Hadron Isolation ; Charged Had. Iso.; # entries", 40, 0., 10);
 	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"NeHadIso"] = new TH1D ("NeHadIso_" + IDRegName,  IDRegTitle + " Neutral Hadron Isolation ; Neutral Had. Iso.; # entries", 40, 0., 10);
@@ -510,6 +539,8 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
   float etaBarrel = 1.2;  
   float pTeta = 20.0;
 
+  float DBfactor = m_tnpConfig.iso_DeltaBeta;
+
   for (auto & muon : muons){
 
     // Total Number of Muons
@@ -519,6 +550,9 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
     if(muon.pt > m_tnpConfig.probe_minPt && 
        fabs(muon.eta) < 2.4){
       
+      float dXY = std::abs(muon.dxyBest); 
+      float dZ =  std::abs(muon.dzBest);
+
       // Number of Muons Passing (pT,eta) cuts
       m_2Dyields["RecoMuon"]->Fill(7., 0., weight);
       
@@ -530,13 +564,15 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
 
       bool FillMuon = false;
       TString sampleTag = m_sampleConfig.sampleName;
+
       if(sampleTag.Contains("SIGNAL") && IsSIGN) FillMuon = true;
-      if(sampleTag.Contains("BACKGROUND") && !IsSIGN) FillMuon = true;
+      // All QCD Events
+      if(sampleTag.Contains("BACKGROUND")) FillMuon = true;
 
       if (!FillMuon) continue;
       
-      bool IsMuonID[7];
-      for (int bmid = 0; bmid<7; bmid++) IsMuonID[bmid] = false;
+      bool IsMuonID[8];
+      for (int bmid = 0; bmid<8; bmid++) IsMuonID[bmid] = false;
       IsMuonID[0] = muon.isGlobal ; 
       IsMuonID[1] = muon.isTracker ; 
       IsMuonID[2] = muon.isLoose ; 
@@ -544,6 +580,12 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
       IsMuonID[4] = muon.isTight ; 
       IsMuonID[5] = muon.isSoft ; 
       IsMuonID[6] = muon.isHighPt ; 
+      IsMuonID[7] = (muon.isMedium && 
+		     dXY < m_tnpConfig.IDMedium_CutdXY && 
+		     dZ  < m_tnpConfig.IDMedium_CutdZ) ; 
+
+      // Muon mother 
+      int GenMatchMotherID = MotherGenMatch(muon, ev.genParticles, m_tnpConfig.gen_DrCut);
 
       // Muon Track
       TLorentzVector muTk(muon_pog::muonTk(muon, m_tnpConfig.muon_trackType));
@@ -562,7 +604,7 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
       IsPURegime[2] = (ev.nVtx >= 25 && ev.nVtx < 45);
       IsPURegime[3] = (ev.nVtx >= 45);
       
-      for (unsigned int mid = 0; mid<7; mid++){
+      for (unsigned int mid = 0; mid<8; mid++){
 
 	if (!IsMuonID[mid])    continue;
 
@@ -570,19 +612,19 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
 
 	  if (!IsEtaRegion[nre]) continue;
 	  
-	  m_2Dyields["RecoMuon"]->Fill(mid,nre, weight);	  
+	  m_2Dyields["RecoMuon"]->Fill(mid, nre, weight);	  
 	  
 	  for (unsigned int npu = 0; npu<4; npu++){
 	    
 	    if (!IsPURegime[npu])  continue;
-	    
+
 	    // Isolation (R=0.4)
 	    float ChHadIso = muon.chargedHadronIso;
 	    float NeHadIso = muon.neutralHadronIso;
 	    float PhIso    = muon.photonIso;
 	    float ChPUIso  = muon.chargedHadronIsoPU;
-	    
-	    float TotalIso = (ChHadIso + std::max(0., NeHadIso + PhIso - 0.5*ChPUIso));
+
+	    float TotalIso = (ChHadIso + std::max(0., NeHadIso + PhIso - 1.0*DBfactor*ChPUIso));
 	    float RelIso   = TotalIso/muon.pt; // muon.isoPflow04;	  
 	    
 	    float TotalIsoNoDB = ChHadIso + NeHadIso + PhIso;
@@ -591,14 +633,33 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
 	    m_plots[IDName[mid]+region[nre]+PUr[npu]+"RelIso"]->Fill(RelIso, weight);
 	    m_plots[IDName[mid]+region[nre]+PUr[npu]+"RelIsoNoDB"]->Fill(RelIsoNoDB, weight);
 
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"dXYVsPt"] ->Fill(dXY, muTk.Pt(), weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"dZVsPt"]  ->Fill(dZ,  muTk.Pt(), weight);
+
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"PtVsdXY"] ->Fill(muTk.Pt(), dXY, weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"PtVsdZ"]  ->Fill(muTk.Pt(), dZ,  weight);
+
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"PtVsVtx"] ->Fill(muTk.Pt(), ev.nVtx, weight);
+	    
+	    m_2Dplots[IDName[mid]+region[nre]+PUr[npu]+"PtVspdgID"]->Fill(muTk.Pt(), GenMatchMotherID, weight);
+
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"VtxVsRelIso"]->Fill(ev.nVtx, RelIso, weight);
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"PtVsRelIso"] ->Fill(muTk.Pt(), RelIso, weight);
 	    if(muTk.Pt() > pTeta) m_prof[IDName[mid]+region[nre]+PUr[npu]+"EtaVsRelIso"]->Fill(muTk.Eta(), RelIso, weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"dXYVsRelIso"] ->Fill(dXY, RelIso, weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"dZVsRelIso"]  ->Fill(dZ,  RelIso, weight);
 
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"VtxVsRelIsoNoDB"]->Fill(ev.nVtx, RelIsoNoDB, weight);
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"PtVsRelIsoNoDB"] ->Fill(muTk.Pt(), RelIsoNoDB, weight);
 	    if(muTk.Pt() > pTeta) m_prof[IDName[mid]+region[nre]+PUr[npu]+"EtaVsRelIsoNoDB"]->Fill(muTk.Eta(), RelIsoNoDB, weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"dXYVsRelIsoNoDB"]->Fill(dXY, RelIsoNoDB, weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"dZVsRelIsoNoDB"] ->Fill(dZ,  RelIsoNoDB, weight);
 	    
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"VtxVsChHadIso"]->Fill(ev.nVtx, ChHadIso, weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"VtxVsNeHadIso"]->Fill(ev.nVtx, NeHadIso, weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"VtxVsPhIso"]   ->Fill(ev.nVtx, PhIso,    weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"VtxVsPUIso"]   ->Fill(ev.nVtx, ChPUIso,  weight);
+
 	    int vRelIsoCut = 1 + std::round(RelIso*100.);
 	    for (int ibin=vRelIsoCut; ibin<=100; ibin++) m_plots[IDName[mid]+region[nre]+PUr[npu]+"RelIsoCut"]->AddBinContent(ibin, weight);
 	    m_plots[IDName[mid]+region[nre]+PUr[npu]+"RelIsoCut"]->AddBinContent(101, weight); // Total Number of Muons 
@@ -606,15 +667,17 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
 	    for(int isocat=0;isocat<=2;isocat++){
 	      bool IsIso = false;
 	      if(isocat == 0) IsIso = true;
-	      if(isocat == 1 && RelIso<m_tnpConfig.probe_isoLooseWP) IsIso = true;
-	      if(isocat == 2 && RelIso<m_tnpConfig.probe_isoTightWP) IsIso = true;
+	      if(isocat == 1 && RelIso<m_tnpConfig.iso_LooseWP) IsIso = true;
+	      if(isocat == 2 && RelIso<m_tnpConfig.iso_TightWP) IsIso = true;
 	      
 	      if(!IsIso) continue;
 	      
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"Vtx"]->Fill(ev.nVtx, weight);
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"Pt"] ->Fill(muTk.Pt(), weight);
 	      if(muTk.Pt() > pTeta) m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"Eta"]->Fill(muTk.Eta(), weight);
-	      
+	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"dXY"]->Fill(dXY, weight);
+	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"dZ"] ->Fill(dZ,  weight);
+
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"ChHadIso"]->Fill(ChHadIso, weight);
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"NeHadIso"]->Fill(NeHadIso, weight);
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"PhIso"]   ->Fill(PhIso, weight);
