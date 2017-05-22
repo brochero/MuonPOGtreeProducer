@@ -385,12 +385,12 @@ void muon_pog::Plotter::book(TFile *outFile)
   
   // -- Yields
   outFile->cd(sampleTag + "/Yields/");
-  m_2Dyields["RecoMuon"] = new TH2D("Yields_RecoMuon" ,"Yields " + sampleTag + " RecoMuons ",10,0,10,4,0,4);
+  m_2Dyields["RecoMuon"] = new TH2D("Yields_RecoMuon" ,"Yields " + sampleTag + " RecoMuons ",11,0,11,4,0,4);
   m_2Dyields["RecoMuon"]->SetOption("COLTEXT"); 
   for (unsigned nid=0; nid<8; nid++) m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(nid+1,IDName[nid]);
-  m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(8, "Total Pass Cut");
-  m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(9, "Total");
-  m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(10, "Total Events (weighted)");
+  m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(9, "Total Pass Cut");
+  m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(10, "Total");
+  m_2Dyields["RecoMuon"]->GetXaxis()->SetBinLabel(11, "Total Events (weighted)");
   for (unsigned nre=0; nre<4; nre++) m_2Dyields["RecoMuon"]->GetYaxis()->SetBinLabel(nre+1,region[nre]);
   
   m_2Dyields["GenMuon"] = new TH2D("Yields_GenMuon" ,"Yields GenMuons " + sampleTag,4,0,4,4,0,4);
@@ -400,7 +400,30 @@ void muon_pog::Plotter::book(TFile *outFile)
   m_2Dyields["GenMuon"]->GetXaxis()->SetBinLabel(3, "Gen Muon Others");
   m_2Dyields["GenMuon"]->GetXaxis()->SetBinLabel(4, "Gen Muon Total");
   for (unsigned nre=0; nre<4; nre++) m_2Dyields["GenMuon"]->GetYaxis()->SetBinLabel(nre+1,region[nre]);
-  
+
+  // Vertices
+  for (unsigned npu=0; npu<4; npu++){
+    outFile->mkdir(sampleTag + "/Vtx/" + PUr[npu]);
+    outFile->cd   (sampleTag + "/Vtx/" + PUr[npu]);
+    // Reco Vertex        
+    m_plots[PUr[npu]+"RecoVtx_X"] = new TH1D ("RecoVtx_X_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position (RECO) ; X [cm]; # entries", 200, 0., 0.2);
+    m_plots[PUr[npu]+"RecoVtx_Y"] = new TH1D ("RecoVtx_Y_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position (RECO) ; Y [cm]; # entries", 200, 0., 0.2);
+    m_plots[PUr[npu]+"RecoVtx_Z"] = new TH1D ("RecoVtx_Z_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position (RECO) ; Z [cm]; # entries", 240, 0., 24);
+    m_plots[PUr[npu]+"RecoVtx_XY"] = new TH1D ("RecoVtx_XY_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position (RECO) ; XY [cm]; # entries", 400, 0., 0.4);
+    // Gen Vertex
+    m_plots[PUr[npu]+"GenVtx_X"] = new TH1D ("GenVtx_X_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position (GEN) ; X [cm]; # entries", 200, 0., 0.2);
+    m_plots[PUr[npu]+"GenVtx_Y"] = new TH1D ("GenVtx_Y_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position (GEN) ; Y [cm]; # entries", 200, 0., 0.2);
+    m_plots[PUr[npu]+"GenVtx_Z"] = new TH1D ("GenVtx_Z_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position (GEN) ; Z [cm]; # entries", 240, 0., 24);
+    m_plots[PUr[npu]+"GenVtx_XY"] = new TH1D ("GenVtx_XY_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position (GEN) ; XY [cm]; # entries", 400, 0., 0.4);
+    // Delta Vertex (Reco-Gen)
+    m_plots[PUr[npu]+"Vtx_DX"] = new TH1D ("Vtx_DX_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position ; #Delta X [cm]; # entries", 100, 0., 0.01);
+    m_plots[PUr[npu]+"Vtx_DY"] = new TH1D ("Vtx_DY_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position ; #Delta Y [cm]; # entries", 100, 0., 0.01);
+    m_plots[PUr[npu]+"Vtx_DZ"] = new TH1D ("Vtx_DZ_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position ; #Delta Z [cm]; # entries", 240, 0., 24);
+    m_plots[PUr[npu]+"Vtx_DXY"] = new TH1D ("Vtx_DXY_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position ; #Delta XY [cm]; # entries", 100, 0., 0.01);
+    // Delta Vertex (Reco-Gen)
+    m_2Dplots[PUr[npu]+"Vtx_DXVsDY"] = new TH2D ("Vtx_DXVsDY_" + PUr[npu], "PU:" + PUr[npu] + " Vertex position ; #Delta X [cm]; #Delta Y [cm]", 100, 0., 0.01, 100, 0., 0.01);
+
+  } // for(npu)  
   
   for (unsigned nid=0; nid<8; nid++){
     outFile->mkdir(sampleTag + "/KinIso_variables/" + IDName[nid]);
@@ -486,7 +509,7 @@ void muon_pog::Plotter::fillGen(const std::vector<muon_pog::GenParticle> & genpa
   
   // Number of Events 
   m_2Dyields["GenMuon"]->Fill(0.,0.);
-  
+
   for (auto & genpar : genpars){
 
     bool genZmuon     = false;
@@ -498,14 +521,12 @@ void muon_pog::Plotter::fillGen(const std::vector<muon_pog::GenParticle> & genpa
 
       bool IsMuonpTCorr = false;
       // Check this with flags!!!!
-      for (auto motherId : genpar.mothers){
-	if(abs(motherId) == 13) IsMuonpTCorr =true;
-      }      
-      if (IsMuonpTCorr) continue;
+      if (hasMother(genpar, 13)) continue;
 
       // Z_id = 23
       genZmuon = hasMother(genpar, 23);
       if(!genZmuon) genOthermuon = true;
+
     }
     if(genZmuon || genOthermuon){
       
@@ -534,8 +555,52 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
 {
 
   // Total Number of Events 
-  m_2Dyields["RecoMuon"]->Fill(9., 0., weight);
+  m_2Dyields["RecoMuon"]->Fill(10., 0., weight);
+
+  // Primary Vertices: Reco and from GenParticles
+  bool IsPURegime[4];
+  for (int bnpu = 0; bnpu<4; bnpu++) IsPURegime[bnpu] = false;
+  IsPURegime[0] = true;
+  IsPURegime[1] = (ev.nVtx < 25);
+  IsPURegime[2] = (ev.nVtx >= 25 && ev.nVtx < 45);
+  IsPURegime[3] = (ev.nVtx >= 45);
+
+  TVector3 RecoVtx;
+  RecoVtx.SetXYZ(ev.primaryVertex[0],ev.primaryVertex[1],ev.primaryVertex[2]);
+
+  TVector3 GenVtx;
+  bool FPrPar = true;
+  for (auto & genpar : ev.genParticles){
+    if(genpar.flags.at(7) == 1 && FPrPar){ // Flag 7: IsHardProcess
+      GenVtx.SetXYZ(genpar.vx,genpar.vy,genpar.vz);      
+      FPrPar = false;
+    } // if(flag == 7)
+  } // for(genpar)
   
+  for (unsigned int npu = 0; npu<4; npu++){
+    
+    if (!IsPURegime[npu])  continue;
+
+    m_plots[PUr[npu]+"RecoVtx_X"] -> Fill(RecoVtx.X(), weight);
+    m_plots[PUr[npu]+"RecoVtx_Y"] -> Fill(RecoVtx.Y(), weight);
+    m_plots[PUr[npu]+"RecoVtx_Z"] -> Fill(RecoVtx.Z(), weight);
+    m_plots[PUr[npu]+"RecoVtx_XY"] -> Fill(RecoVtx.XYvector().Mod(), weight);
+    
+    m_plots[PUr[npu]+"GenVtx_X"] -> Fill(GenVtx.X(), weight);
+    m_plots[PUr[npu]+"GenVtx_Y"] -> Fill(GenVtx.Y(), weight);
+    m_plots[PUr[npu]+"GenVtx_Z"] -> Fill(GenVtx.Z(), weight);
+    m_plots[PUr[npu]+"GenVtx_XY"] -> Fill(GenVtx.XYvector().Mod(), weight);
+    
+    m_plots[PUr[npu]+"Vtx_DX"] -> Fill(std::abs(RecoVtx.X() - GenVtx.X()), weight);
+    m_plots[PUr[npu]+"Vtx_DY"] -> Fill(std::abs(RecoVtx.Y() - GenVtx.Y()), weight);
+    m_plots[PUr[npu]+"Vtx_DZ"] -> Fill(std::abs(RecoVtx.Z() - GenVtx.Z()), weight);
+    m_plots[PUr[npu]+"Vtx_DXY"] -> Fill(std::abs(RecoVtx.XYvector().Mod() - GenVtx.XYvector().Mod()), weight);
+    
+    m_2Dplots[PUr[npu]+"Vtx_DXVsDY"] -> Fill(std::abs(RecoVtx.X() - GenVtx.X()), std::abs(RecoVtx.Y() - GenVtx.Y()), weight);
+
+  } // for(npu)
+
+  // Muon General Cuts
   float etaBarrel = 1.2;  
   float pTeta = 20.0;
 
@@ -544,18 +609,18 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
   for (auto & muon : muons){
 
     // Total Number of Muons
-    m_2Dyields["RecoMuon"]->Fill(8., 0., weight);
+    m_2Dyields["RecoMuon"]->Fill(9., 0., weight);
     
     // General Probe Muons	      
     if(muon.pt > m_tnpConfig.probe_minPt && 
        fabs(muon.eta) < 2.4){
-      
+
+      // Number of Muons Passing (pT,eta) cuts
+      m_2Dyields["RecoMuon"]->Fill(8., 0., weight);
+            
       float dXY = std::abs(muon.dxyBest); 
       float dZ =  std::abs(muon.dzBest);
 
-      // Number of Muons Passing (pT,eta) cuts
-      m_2Dyields["RecoMuon"]->Fill(7., 0., weight);
-      
       bool IsSIGN = false;
       
       // Check first if muon comes from Z
@@ -597,13 +662,6 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
       IsEtaRegion[2] = (std::abs(muTk.Eta()) >= etaBarrel);
       IsEtaRegion[3] = ((std::abs(muTk.Eta()) > 0.9 && std::abs(muTk.Eta()) < 1.3));
 
-      bool IsPURegime[4];
-      for (int bnpu = 0; bnpu<4; bnpu++) IsPURegime[bnpu] = false;
-      IsPURegime[0] = true;
-      IsPURegime[1] = (ev.nVtx < 25);
-      IsPURegime[2] = (ev.nVtx >= 25 && ev.nVtx < 45);
-      IsPURegime[3] = (ev.nVtx >= 45);
-      
       for (unsigned int mid = 0; mid<8; mid++){
 
 	if (!IsMuonID[mid])    continue;

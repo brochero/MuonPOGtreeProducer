@@ -91,7 +91,8 @@ process.source = cms.Source("PoolSource",
 )
 
 files = subprocess.check_output([ "/afs/cern.ch/project/eos/installation/0.3.15/bin/eos.select", "ls", options.eosInputFolder ])
-process.source.fileNames = [ options.eosInputFolder+"/"+f for f in files.split() ]  
+#process.source.fileNames = [ options.eosInputFolder+"/"+f for f in files.split() ]  
+process.source.fileNames = [ 'file:/afs/cern.ch/user/b/brochero/brochero_WorkArea/MuonIsolation-902X/CMSSW_9_0_2_patch1/src/MuonPOGtreeProducer/Tools/test/003E256E-CC28-E711-8B9F-0242AC130002.root' ]
 
 process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
 process.load("Configuration.StandardSequences.MagneticField_38T_cff")
