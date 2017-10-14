@@ -9,17 +9,17 @@ ConfigDir = "config/config"
 Configs    = [
     "DY",
     "QCD_pT15to20",
-    "QCD_pT20to30",
-    "QCD_pT30to50",
+    #"QCD_pT20to30",
+    #"QCD_pT30to50",
     "QCD_pT50to80",
-    "QCD_pT80to120",
+    #"QCD_pT80to120",
     "QCD_pT120to170",
     "QCD_pT170to300",
-    "QCD_pT300to470",
+    #"QCD_pT300to470",
     #"QCD_pT470to600",
-    "QCD_pT600to800",
-    #"QCD_pT800to1000",
-    "QCD_pT1000toInf",
+    #"QCD_pT600to800",
+    "QCD_pT800to1000",
+    #"QCD_pT1000toInf",
     ]
 
 RunFileName    = "ToSubmit.sh"

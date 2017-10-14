@@ -3,13 +3,13 @@ config = Configuration()
 
 config.section_('General')
 config.General.transferLogs = True
-config.General.requestName = 'DY_PhaseISpring17DR-FlatPU28to62_902_90X_upgrade2017_realistic_v20'
+config.General.requestName = 'DY_RunIISummer17DRPremix-92X_upgrade2017_realistic_v10'
 
 config.section_('JobType')
 config.JobType.pluginName  = 'Analysis'
 config.JobType.psetName    = '../muonPogNtuples_cfg.py'
-config.JobType.pyCfgParams = ['globalTag=90X_upgrade2017_realistic_v20',
-                              'ntupleName=muonPOGNtuple_IsolationStudies.root',
+config.JobType.pyCfgParams = ['globalTag=92X_upgrade2017_realistic_v10',
+                              'ntupleName=muonPOGNtuple_IsolationStudies_DY.root',
                               'nEvents=-1',
                               'runOnMC=True',
                               'hltPathFilter=all',
@@ -19,7 +19,7 @@ config.JobType.pyCfgParams = ['globalTag=90X_upgrade2017_realistic_v20',
 config.JobType.allowUndistributedCMSSW = True  # To fix cmssw releases
 
 config.section_('Data')
-config.Data.inputDataset = '/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/PhaseISpring17DR-FlatPU28to62_902_90X_upgrade2017_realistic_v20_ext1-v1/AODSIM'
+config.Data.inputDataset = '/DYJetsToLL_M-10to50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v1/AODSIM'
 
 
 config.Data.splitting    = 'FileBased'
