@@ -7,31 +7,32 @@ import sys
 options = VarParsing.VarParsing()
 
 options.register('globalTag',
-                 '80X_mcRun2_asymptotic_2016_TrancheIV_v4', #default value
+                 '91X_dataRun2_relval_v6', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Global Tag")
 
 options.register('nEvents',
-                 -1, #default value
+                 1000, #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.int,
                  "Maximum number of processed events")
 
 options.register('eosInputFolder',
-                 '/store/relval/CMSSW_8_0_20/RelValZMM_13/GEN-SIM-RECO/PU25ns_80X_mcRun2_asymptotic_2016_TrancheIV_v4_Tr4GT_v4-v1/00000', #default value
+                 '/store/relval/CMSSW_9_2_0/SingleMuon/RAW-RECO/ZMu-91X_dataRun2_relval_v6_RelVal_sigMu2016B-v1/10000',
+                 #'/store/relval/CMSSW_9_2_0/RelValZMM_13/GEN-SIM-RECO/PU25ns_91X_mcRun2_asymptotic_v3-v1/10000', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "EOS folder with input files")
 
 options.register('ntupleName',
-                 './muonPOGNtuple_8_0_3_RelValZMM_13.root', #default value
+                 './muonPOGNtuple_92X_RelValSigMu_13.root', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Folder and name ame for output ntuple")
 
 options.register('runOnMC',
-                 True, #default value
+                 False, #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
                  "Run on DATA or MC")
