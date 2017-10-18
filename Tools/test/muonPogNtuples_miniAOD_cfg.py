@@ -95,12 +95,14 @@ process.load("Configuration.StandardSequences.MagneticField_38T_cff")
 #process.load("Geometry.CommonDetUnit.globalTrackingGeometry_cfi")
 #process.load("RecoMuon.DetLayers.muonDetLayerGeometry_cfi")
 
-from MuonPOG.Tools.MuonPogNtuples_cff import appendMuonPogNtuple, customiseHlt, customiseMuonCuts
+from MuonPOGtreeProducer.Tools.MuonPogNtuples_cff import appendMuonPogNtuple, customiseHlt, customiseMuonCuts
     
 appendMuonPogNtuple(process,options.runOnMC,"HLT",options.ntupleName)
 
 customiseHlt(process,pathCut,filterCut)
 customiseMuonCuts(process,options.minMuPt,options.minNMu)
+
+process.goodOfflinePrimaryVertices.src = cms.InputTag("offlineSlimmedPrimaryVertices")
 
 process.MuonPogTree.MuonTag = cms.untracked.InputTag("slimmedMuons")
 process.MuonPogTree.PrimaryVertexTag = cms.untracked.InputTag("offlineSlimmedPrimaryVertices")
@@ -109,3 +111,4 @@ process.MuonPogTree.TrigSummaryTag = cms.untracked.InputTag("none")
 process.MuonPogTree.PFMetTag = cms.untracked.InputTag("none")
 process.MuonPogTree.PFChMetTag = cms.untracked.InputTag("none")
 process.MuonPogTree.CaloMetTag = cms.untracked.InputTag("none")
+

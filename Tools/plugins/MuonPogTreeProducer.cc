@@ -621,41 +621,41 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
 						mu.charge(),mu.muonBestTrack()->ptError()));
 
       ntupleMu.fits.push_back(muon_pog::MuonFit(hasInnerTrack ? mu.innerTrack()->pt()  : -1000.,
-						hasInnerTrack ? mu.innerTrack()->eta() : -1000.,
-						hasInnerTrack ? mu.innerTrack()->phi() : -1000.,
-						hasInnerTrack ? mu.innerTrack()->charge()  : -1000.,
-						hasInnerTrack ? mu.innerTrack()->ptError() : -1000.));
+      						hasInnerTrack ? mu.innerTrack()->eta() : -1000.,
+      						hasInnerTrack ? mu.innerTrack()->phi() : -1000.,
+      						hasInnerTrack ? mu.innerTrack()->charge()  : -1000.,
+      						hasInnerTrack ? mu.innerTrack()->ptError() : -1000.));
 
       ntupleMu.fits.push_back(muon_pog::MuonFit(isStandAlone ? mu.outerTrack()->pt()  : -1000.,
-						isStandAlone ? mu.outerTrack()->eta() : -1000.,
-						isStandAlone ? mu.outerTrack()->phi() : -1000.,
-						isStandAlone ? mu.outerTrack()->charge()  : -1000.,
-						isStandAlone ? mu.outerTrack()->ptError() : -1000.));
+      						isStandAlone ? mu.outerTrack()->eta() : -1000.,
+      						isStandAlone ? mu.outerTrack()->phi() : -1000.,
+      						isStandAlone ? mu.outerTrack()->charge()  : -1000.,
+      						isStandAlone ? mu.outerTrack()->ptError() : -1000.));
 
       ntupleMu.fits.push_back(muon_pog::MuonFit(isGlobal ? mu.globalTrack()->pt()  : -1000.,
-						isGlobal ? mu.globalTrack()->eta() : -1000.,
-						isGlobal ? mu.globalTrack()->phi() : -1000.,
-						isGlobal ? mu.globalTrack()->charge()  : -1000.,
-						isGlobal ? mu.globalTrack()->ptError() : -1000.));
+      						isGlobal ? mu.globalTrack()->eta() : -1000.,
+      						isGlobal ? mu.globalTrack()->phi() : -1000.,
+      						isGlobal ? mu.globalTrack()->charge()  : -1000.,
+      						isGlobal ? mu.globalTrack()->ptError() : -1000.));
 
       ntupleMu.fits.push_back(muon_pog::MuonFit(hasTunePTrack ? mu.tunePMuonBestTrack()->pt()  : -1000.,
-						hasTunePTrack ? mu.tunePMuonBestTrack()->eta() : -1000.,
-						hasTunePTrack ? mu.tunePMuonBestTrack()->phi() : -1000.,
-						hasTunePTrack ? mu.tunePMuonBestTrack()->charge()  : -1000.,
-						hasTunePTrack ? mu.tunePMuonBestTrack()->ptError() : -1000.));
-        
+      						hasTunePTrack ? mu.tunePMuonBestTrack()->eta() : -1000.,
+      						hasTunePTrack ? mu.tunePMuonBestTrack()->phi() : -1000.,
+      						hasTunePTrack ? mu.tunePMuonBestTrack()->charge()  : -1000.,
+      						hasTunePTrack ? mu.tunePMuonBestTrack()->ptError() : -1000.));
+      
       ntupleMu.fits.push_back(muon_pog::MuonFit(hasPickyTrack ? mu.pickyTrack()->pt()  : -1000.,
                         hasPickyTrack ? mu.pickyTrack()->eta() : -1000.,
                         hasPickyTrack ? mu.pickyTrack()->phi() : -1000.,
                         hasPickyTrack ? mu.pickyTrack()->charge()  : -1000.,
                         hasPickyTrack ? mu.pickyTrack()->ptError() : -1000.));
-        
+      
       ntupleMu.fits.push_back(muon_pog::MuonFit(hasDytTrack ? mu.dytTrack()->pt()  : -1000.,
                         hasDytTrack ? mu.dytTrack()->eta() : -1000.,
                         hasDytTrack ? mu.dytTrack()->phi() : -1000.,
                         hasDytTrack ? mu.dytTrack()->charge()  : -1000.,
                         hasDytTrack ? mu.dytTrack()->ptError() : -1000.));
-        
+      
       ntupleMu.fits.push_back(muon_pog::MuonFit(hasTpfmsTrack ? mu.tpfmsTrack()->pt()  : -1000.,
                         hasTpfmsTrack ? mu.tpfmsTrack()->eta() : -1000.,
                         hasTpfmsTrack ? mu.tpfmsTrack()->phi() : -1000.,
@@ -719,6 +719,11 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
 		   )
 		{
 	      
+		  ntupleMatch.x = mu.trackX(match.station(),match.detector());
+		  ntupleMatch.y = mu.trackY(match.station(),match.detector());
+		  ntupleMatch.dXdZ = mu.trackDxDz(match.station(),match.detector());
+		  ntupleMatch.dYdZ = mu.trackDyDz(match.station(),match.detector());
+
 		  ntupleMatch.errxTk = mu.trackXErr(match.station(),match.detector());
 		  ntupleMatch.erryTk = mu.trackYErr(match.station(),match.detector());
 
@@ -827,21 +832,21 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
 	     ntupleMu.fitPt(muon_pog::MuonFitType::TUNEP)   > m_minMuPtCut ||
 	     ntupleMu.fitPt(muon_pog::MuonFitType::INNER)   > m_minMuPtCut ||
 	     ntupleMu.fitPt(muon_pog::MuonFitType::STA)     > m_minMuPtCut ||
-         ntupleMu.fitPt(muon_pog::MuonFitType::PICKY)   > m_minMuPtCut ||
-         ntupleMu.fitPt(muon_pog::MuonFitType::DYT)     > m_minMuPtCut ||
-         ntupleMu.fitPt(muon_pog::MuonFitType::TPFMS)   > m_minMuPtCut)
-	    )
+	     ntupleMu.fitPt(muon_pog::MuonFitType::PICKY)   > m_minMuPtCut ||
+	     ntupleMu.fitPt(muon_pog::MuonFitType::DYT)     > m_minMuPtCut ||
+	     ntupleMu.fitPt(muon_pog::MuonFitType::TPFMS)   > m_minMuPtCut)
+	     )
           )
       {
         event_.muons.push_back(ntupleMu);
         
         std::vector<Float_t> PTs = {ntupleMu.fitPt(muon_pog::MuonFitType::DEFAULT),
-                         ntupleMu.fitPt(muon_pog::MuonFitType::GLB),
-                         ntupleMu.fitPt(muon_pog::MuonFitType::TUNEP),
-                         ntupleMu.fitPt(muon_pog::MuonFitType::INNER),
-                         ntupleMu.fitPt(muon_pog::MuonFitType::PICKY),
-                         ntupleMu.fitPt(muon_pog::MuonFitType::DYT),
-                         ntupleMu.fitPt(muon_pog::MuonFitType::TPFMS)};
+				    ntupleMu.fitPt(muon_pog::MuonFitType::GLB),
+				    ntupleMu.fitPt(muon_pog::MuonFitType::TUNEP),
+				    ntupleMu.fitPt(muon_pog::MuonFitType::INNER),
+				    ntupleMu.fitPt(muon_pog::MuonFitType::PICKY),
+				    ntupleMu.fitPt(muon_pog::MuonFitType::DYT),
+				    ntupleMu.fitPt(muon_pog::MuonFitType::TPFMS)};
         eventId_.maxPTs.push_back(*std::max_element(PTs.begin(), PTs.end()));
       }
 
