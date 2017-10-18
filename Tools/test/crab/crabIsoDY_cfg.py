@@ -19,11 +19,11 @@ config.JobType.pyCfgParams = ['globalTag=92X_upgrade2017_realistic_v10',
 config.JobType.allowUndistributedCMSSW = True  # To fix cmssw releases
 
 config.section_('Data')
-config.Data.inputDataset = '/DYJetsToLL_M-10to50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v1/AODSIM'
+config.Data.inputDataset = '/DY3JetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
 
 
 config.Data.splitting    = 'FileBased'
-config.Data.unitsPerJob  = 2
+config.Data.unitsPerJob  = 20
 config.Data.inputDBS     = 'https://cmsweb.cern.ch/dbs/prod/global/DBSReader/'
 config.Data.ignoreLocality  = True
 config.Data.allowNonValidInputDataset = True

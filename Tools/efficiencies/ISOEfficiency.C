@@ -626,7 +626,7 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
       // Check first if muon comes from Z
       // Check "hasGenMatch" and "hasNoGenMatch"
       IsSIGN = muon_pog::hasGenMatch(muon, ev.genParticles, m_tnpConfig.gen_DrCut, 23);
-
+ 
       bool FillMuon = false;
       TString sampleTag = m_sampleConfig.sampleName;
 
