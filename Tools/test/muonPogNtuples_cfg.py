@@ -7,7 +7,7 @@ import sys
 options = VarParsing.VarParsing()
 
 options.register('globalTag',
-                 '91X_dataRun2_relval_v6', #default value
+                 '92X_upgrade2017_realistic_v10', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Global Tag")
@@ -19,20 +19,19 @@ options.register('nEvents',
                  "Maximum number of processed events")
 
 options.register('eosInputFolder',
-                 '/store/relval/CMSSW_9_2_0/SingleMuon/RAW-RECO/ZMu-91X_dataRun2_relval_v6_RelVal_sigMu2016B-v1/10000',
-                 #'/store/relval/CMSSW_9_2_0/RelValZMM_13/GEN-SIM-RECO/PU25ns_91X_mcRun2_asymptotic_v3-v1/10000', #default value
+                 '/store/relval/CMSSW_9_2_0/RelValZMM_13/GEN-SIM-RECO/PU25ns_91X_mcRun2_asymptotic_v3-v1/10000', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "EOS folder with input files")
 
 options.register('ntupleName',
-                 './muonPOGNtuple_92X_RelValSigMu_13.root', #default value
+                 './muonPOGNtuple_92X_RelValZMM_13.root', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Folder and name ame for output ntuple")
 
 options.register('runOnMC',
-                 False, #default value
+                 True, #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
                  "Run on DATA or MC")
@@ -93,7 +92,7 @@ process.source = cms.Source("PoolSource",
 
 files = subprocess.check_output([ "/afs/cern.ch/project/eos/installation/0.3.15/bin/eos.select", "ls", options.eosInputFolder ])
 #process.source.fileNames = [ options.eosInputFolder+"/"+f for f in files.split() ]  
-process.source.fileNames = [ 'file:/afs/cern.ch/user/b/brochero/brochero_WorkArea/MuonPOG/MuonIsolation-92X/CMSSW_9_2_8/src/MuonPOGtreeProducer/Tools/test/04193062-9F90-E711-AB12-00259029ED0E.root' ]
+process.source.fileNames = [ 'file:/afs/cern.ch/user/b/brochero/brochero_WorkArea/MuonPOG/MuonIsolation-92X/CMSSW_9_2_8/src/MuonPOGtreeProducer/Tools/test/DY_0005456C-9A98-E711-B14E-0242AC11000D.root' ]
 
 process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
 process.load("Configuration.StandardSequences.MagneticField_38T_cff")
