@@ -5,6 +5,7 @@
 <use name="DataFormats/RecoCandidate"/>
 <use name="CommonTools/Utils"/>
 <use name="CommonTools/UtilAlgos"/>
+<use name="DataFormats/JetReco"/>
 
 <use name="rootminuit"/>
 
