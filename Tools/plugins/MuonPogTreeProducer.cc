@@ -51,6 +51,10 @@
 #include "CommonTools/CandUtils/interface/AddFourMomenta.h"
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 
+#include "DataFormats/PatCandidates/interface/Jet.h"
+#include "DataFormats/JetReco/interface/PFJetCollection.h"
+
+
 #include "MuonPOGtreeProducer/Tools/src/MuonPogTree.h"
 #include "TTree.h"
 
@@ -81,10 +85,14 @@ private:
   
   void fillPV(const edm::Handle<std::vector<reco::Vertex> > &);
   
-
+  
   Int_t fillMuons(const edm::Handle<edm::View<reco::Muon> > &,
 		  const edm::Handle<std::vector<reco::Vertex> > &,
 		  const edm::Handle<reco::BeamSpot> &);
+
+  void fillJets(const edm::Handle<edm::View<reco::PFJet> > &);
+
+  void fillGenJets(const edm::Handle<edm::View<reco::GenJet> > &);
 
   void fillL1(const edm::Handle<l1t::MuonBxCollection> &);
 
@@ -99,6 +107,8 @@ private:
   std::string trigPathCut_;
 
   edm::EDGetTokenT<edm::View<reco::Muon> > muonToken_;
+  edm::EDGetTokenT<edm::View<reco::PFJet> > jetsToken_;
+  edm::EDGetTokenT<edm::View<reco::GenJet> > genjetsToken_;
   edm::EDGetTokenT<std::vector<reco::Vertex> > primaryVertexToken_;
   edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
 
@@ -139,6 +149,12 @@ MuonPogTreeProducer::MuonPogTreeProducer( const edm::ParameterSet & cfg )
 
   tag = cfg.getUntrackedParameter<edm::InputTag>("MuonTag", edm::InputTag("muons"));
   if (tag.label() != "none") muonToken_ = consumes<edm::View<reco::Muon> >(tag);
+
+  tag = cfg.getUntrackedParameter<edm::InputTag>("JetTag", edm::InputTag("ak4PFJetsCHS"));
+  if (tag.label() != "none") jetsToken_ = consumes<edm::View<reco::PFJet> >(tag);
+
+  tag = cfg.getUntrackedParameter<edm::InputTag>("GenJetTag", edm::InputTag("ak4GenJets"));
+  if (tag.label() != "none") genjetsToken_ = consumes<edm::View<reco::GenJet> >(tag);
 
   tag = cfg.getUntrackedParameter<edm::InputTag>("PrimaryVertexTag", edm::InputTag("offlinePrimaryVertices"));
   if (tag.label() != "none") primaryVertexToken_ = consumes<std::vector<reco::Vertex> >(tag);
@@ -213,6 +229,8 @@ void MuonPogTreeProducer::analyze (const edm::Event & ev, const edm::EventSetup 
   event_.genParticles.clear();
   event_.genInfos.clear();
   event_.muons.clear();
+  event_.jets.clear();
+  event_.genjets.clear();
   
   event_.mets.pfMet   = -999; 
   event_.mets.pfChMet = -999; 
@@ -354,6 +372,8 @@ void MuonPogTreeProducer::analyze (const edm::Event & ev, const edm::EventSetup 
       } 
     } 
 
+  // std::cout << "-----------------------------------------------------------" << std::endl;
+  // std::cout << "-----------------------------------------------------------" << std::endl;
   // Get muons  
   edm::Handle<edm::View<reco::Muon> > muons;
   if (!muonToken_.isUninitialized() ) 
@@ -372,6 +392,35 @@ void MuonPogTreeProducer::analyze (const edm::Event & ev, const edm::EventSetup 
     }
   eventId_.nMuons = nGoodMuons;
 
+
+  // Get genjets  
+  edm::Handle<edm::View<reco::GenJet> > genjets;
+  if (!genjetsToken_.isUninitialized() ) 
+    { 
+      if (!ev.getByToken(genjetsToken_, genjets)) 
+	edm::LogError("") << "[MuonPogTreeProducer] GenJet collection does not exist !!!";
+    }
+  
+  // Fill jet information if there are good muons in the event
+  if (genjets.isValid() && nGoodMuons >= m_minNMuCut) 
+    {
+      fillGenJets(genjets);
+    }
+    
+  // Get jets  
+  edm::Handle<edm::View<reco::PFJet> > jets;
+  if (!jetsToken_.isUninitialized() ) 
+    { 
+      if (!ev.getByToken(jetsToken_, jets)) 
+	edm::LogError("") << "[MuonPogTreeProducer] PFJet collection does not exist !!!";
+    }
+  
+  // Fill jet information if there are good muons in the event
+  if (jets.isValid() && nGoodMuons >= m_minNMuCut) 
+    {
+      // std::cout << "Filling Jets" << std::endl;
+      fillJets(jets);
+    }
     
   //Fill L1 informations
   edm::Handle<l1t::MuonBxCollection> l1s;
@@ -617,6 +666,9 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
       ntupleMu.phi    = mu.phi();
       ntupleMu.charge = mu.charge();
 
+      //if (ntupleMu.pt> 5) std::cout << "Mupt = " << ntupleMu.pt << " ; Mueta = " << ntupleMu.eta << " ; Muphi = " << ntupleMu.phi  << std::endl;
+
+
       ntupleMu.fits.push_back(muon_pog::MuonFit(mu.pt(),mu.eta(),mu.phi(),
 						mu.charge(),mu.muonBestTrack()->ptError()));
 
@@ -853,6 +905,112 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
     }
 
   return event_.muons.size();
+
+}
+
+void MuonPogTreeProducer::fillJets(const edm::Handle<edm::View<reco::PFJet> > & jets)
+{
+  
+  // std::cout << "Number of Jets: " << jets->size() << std::endl;
+  // std::cout << "Number of Muons: " << event_.muons.size() << std::endl;
+
+  edm::View<reco::PFJet>::const_iterator jetIt  = jets->begin();
+  edm::View<reco::PFJet>::const_iterator jetEnd = jets->end();
+  
+  for (; jetIt != jetEnd; ++jetIt) 
+    {
+      const reco::PFJet& pfjet = (*jetIt);
+      muon_pog::PF04Jets ntupleJet;
+      
+      if (pfjet.pt()<20) continue;
+
+      ntupleJet.pt  = pfjet.pt();
+      ntupleJet.eta = pfjet.eta();
+      ntupleJet.phi = pfjet.phi();
+      ntupleJet.Ent = pfjet.et();
+      ntupleJet.En  = pfjet.energy();
+
+      float NHF    = pfjet.neutralHadronEnergyFraction();
+      float NEMF   = pfjet.neutralEmEnergyFraction();
+      float CHF    = pfjet.chargedHadronEnergyFraction();
+      float MUF    = pfjet.muonEnergyFraction();
+      float CEMF   = pfjet.chargedEmEnergyFraction();
+      int NumConst = pfjet.chargedMultiplicity()+pfjet.neutralMultiplicity();
+      int NumNeutralParticle =pfjet.neutralMultiplicity();
+      int CHM      = pfjet.chargedMultiplicity();
+
+      // Definition from 
+      bool looseJetID = false;
+      looseJetID = (NHF<0.99 && NEMF<0.99 && NumConst>1) && 
+	( (std::abs(ntupleJet.eta)<=2.4 && CHF>0.0 && CHM>0.0 && CEMF<0.99) || std::abs(ntupleJet.eta)>2.4 ) 
+	&& std::abs(ntupleJet.eta)<=2.7;
+      
+      bool tightJetID = false;
+      tightJetID  = (NHF<0.90 && NEMF<0.90 && NumConst>1) && 
+	((std::abs(ntupleJet.eta)<=2.4 && CHF>0 && CHM>0 && CEMF<0.99) || std::abs(ntupleJet.eta)>2.4) 
+	&& std::abs(ntupleJet.eta)<=2.7;
+      
+      if ( std::abs(ntupleJet.eta) > 3.0 ) {
+      	looseJetID = (NEMF<0.90 && NumNeutralParticle>10 && std::abs(ntupleJet.eta)>3.0 );
+      	tightJetID = (NEMF<0.90 && NumNeutralParticle>10 && std::abs(ntupleJet.eta)>3.0 );
+      }
+      else if (std::abs(ntupleJet.eta) > 2.7){
+      	looseJetID = (NHF<0.98 && NEMF>0.01 && NumNeutralParticle>2 && std::abs(ntupleJet.eta)>2.7 && std::abs(ntupleJet.eta)<=3.0 );
+      	tightJetID = (NHF<0.98 && NEMF>0.01 && NumNeutralParticle>2 && std::abs(ntupleJet.eta)>2.7 && std::abs(ntupleJet.eta)<=3.0 );
+      }      
+
+      ntupleJet.isTightID = tightJetID;
+      
+      ntupleJet.MuonEn = MUF;
+
+      // Muon cleaning  
+      bool cleanJet = true; 
+      for (unsigned int imuon = 0; imuon < event_.muons.size(); imuon++){
+	muon_pog::Muon SelMuon = event_.muons.at(imuon);
+	if (cleanJet) cleanJet = deltaR(SelMuon.eta, SelMuon.phi, ntupleJet.eta, ntupleJet.phi) > 0.4;
+      }
+      
+      if(looseJetID && cleanJet){
+	event_.jets.push_back(ntupleJet);
+	//std::cout << "pt = " << ntupleJet.pt << " ; eta = " << ntupleJet.eta << " ; phi = " << ntupleJet.phi << " ; E = " << ntupleJet.En << " ; ntIsTight = " << ntupleJet.isTightID << std::endl;
+      }
+      
+    }
+
+}
+
+
+void MuonPogTreeProducer::fillGenJets(const edm::Handle<edm::View<reco::GenJet> > & genjets)
+{
+  
+  // std::cout << "Number of Gen-Jets: " << genjets->size() << std::endl;
+
+  edm::View<reco::GenJet>::const_iterator genjetIt  = genjets->begin();
+  edm::View<reco::GenJet>::const_iterator genjetEnd = genjets->end();
+  
+  for (; genjetIt != genjetEnd; ++genjetIt) 
+    {
+      const reco::GenJet& genjet = (*genjetIt);
+      muon_pog::Gen04Jets ntupleGenJet;
+      
+      ntupleGenJet.pt  = genjet.pt();
+      ntupleGenJet.eta = genjet.eta();
+      ntupleGenJet.phi = genjet.phi();
+      ntupleGenJet.Ent = genjet.et();
+      ntupleGenJet.En  = genjet.energy();
+
+      // Muon cleaning  
+      bool cleanGenJet = true; 
+      for (unsigned int imuon = 0; imuon < event_.muons.size(); imuon++){
+	muon_pog::Muon SelMuon = event_.muons.at(imuon);
+	if (cleanGenJet) cleanGenJet = deltaR(SelMuon.eta, SelMuon.phi, ntupleGenJet.eta, ntupleGenJet.phi) > 0.4;
+      }
+
+      if (ntupleGenJet.pt>20 && cleanGenJet){
+	event_.genjets.push_back(ntupleGenJet);
+	// std::cout << "Genpt = " << ntupleGenJet.pt << " ; Geneta = " << ntupleGenJet.eta << " ; Genphi = " << ntupleGenJet.phi  << " ; GenE = " << ntupleGenJet.En << std::endl;
+      }
+    }
 
 }
 

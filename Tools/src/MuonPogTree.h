@@ -259,10 +259,44 @@ namespace muon_pog {
     {
       return fits.at(type).ptErr;
     };
-
+    
     ClassDef(Muon,4)
   };
 
+  class PF04Jets {
+  public:
+    
+    Float_t pt;  // pt [GeV]   
+    Float_t eta; // eta
+    Float_t phi; // phi
+    Float_t Ent; // Transverse energy
+    Float_t En;  // Energy 
+    Float_t MuonEn; // Muon Energy 
+
+    Int_t isLooseID;  // Loose ID
+    Int_t isTightID;  // Tight ID
+
+    PF04Jets(){};
+    virtual ~PF04Jets(){};
+    
+    ClassDef(PF04Jets,1)
+  };
+
+  class Gen04Jets {
+  public:
+    
+    Float_t pt;  // pt [GeV]   
+    Float_t eta; // eta
+    Float_t phi; // phi
+    Float_t Ent; // Transverse Energy 
+    Float_t En;  // Energy 
+    
+    Gen04Jets(){};
+    virtual ~Gen04Jets(){};
+    
+    ClassDef(Gen04Jets,1)
+  };
+  
   class HLTObject {
   public:
 
@@ -356,6 +390,8 @@ namespace muon_pog {
     std::vector <muon_pog::GenInfo> genInfos;        // venctor of genInfos; size=0 in data
     std::vector<muon_pog::GenParticle> genParticles; // venctor of genParticles size=0 in data
     std::vector<muon_pog::Muon> muons; // vector of muons
+    std::vector<muon_pog::PF04Jets> jets; // vector of Jets
+    std::vector<muon_pog::Gen04Jets> genjets; // vector of GenJets
     muon_pog::METs mets;  // vector of different MET definitions 
     muon_pog::HLT hlt;                 // HLT objects
     std::vector <muon_pog::L1Muon> l1muons; //vector with the L1 muon candidates
