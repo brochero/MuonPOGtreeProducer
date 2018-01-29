@@ -66,10 +66,10 @@ namespace muon_pog {
     
     MuonDetType type;
     
-    Float_t x; 
+    Float_t x;
     Float_t y;
 
-    Float_t dXdZ; 
+    Float_t dXdZ;
     Float_t dYdZ;
 
     Float_t dx;  // 999999 if not matched with a segment (I think) 
