@@ -46,7 +46,7 @@
 // 3. Plotter : class containing the plot definition and defining the plot filling 
 //              for a given sample <= CB modify this to add new variables
 // ******************************
-
+std::vector<TString> GetListOfFiles(TString FileName);
 
 namespace muon_pog {
  
@@ -218,61 +218,71 @@ int main(int argc, char* argv[]){
     {
 
 
-      TString fileName = plotter.m_sampleConfig.fileName;
+      TString fileListName = plotter.m_sampleConfig.fileName;
       std::cout << "[" << argv[0] << "] Processing file "
-		<< fileName.Data() << std::endl;  
-  
-      // Initialize pointers to summary and full event structure
+		<< fileListName.Data() << std::endl;  
 
+      std::vector<TString> SetOfFiles = GetListOfFiles(fileListName);
+  
+      std::cout << "Number of files to be processed: " << SetOfFiles.size() << std::endl;
+      
+      // Initialize pointers to summary and full event structure
       muon_pog::Event*   ev   = new muon_pog::Event();
 
-      TTree* tree;
-      TBranch* evBranch;
-
-      // Open file, get tree, set branches
-
-      TFile* inputFile = TFile::Open(fileName,"READONLY");
-      tree = (TTree*)inputFile->Get("MUONPOGTREE");
-      if (!tree) inputFile->GetObject("MuonPogTree/MUONPOGTREE",tree);
-
-      evBranch = tree->GetBranch("event");
-      evBranch->SetAddress(&ev);
-
-      // Watch number of entries
-      int nEntries;
-      if (plotter.m_sampleConfig.nEvents > 0 && 
-	  plotter.m_sampleConfig.nEvents < tree->GetEntriesFast()) nEntries = plotter.m_sampleConfig.nEvents;
-      else nEntries = tree->GetEntriesFast();
-
-      std::cout << "[" << argv[0] << "] Number of entries = " << nEntries << std::endl;
-
-      int nFilteredEvents = 0;
-
-      float weight = 1.;
-      // Add cross section weight -> To take into account QCD filter efficiencies
-      if(plotter.m_sampleConfig.applyReweighting==true)
-	weight *= (plotter.m_sampleConfig.QCDWeight/nEntries);
+      // Loop over all files
+      for(unsigned int ifile = 0; ifile < SetOfFiles.size(); ifile++){
+	
+	TFile* inputFile; 
+	TTree* tree;
+	TBranch* evBranch;
+	
+	// Open file, get tree, set branches
+	inputFile = TFile::Open(SetOfFiles.at(ifile),"READONLY");
+	tree = (TTree*)inputFile->Get("MUONPOGTREE");
+	if (!tree) inputFile->GetObject("MuonPogTree/MUONPOGTREE",tree);
+	
+	evBranch = tree->GetBranch("event");
+	evBranch->SetAddress(&ev);
+	
+	// Watch number of entries
+	int nEntries;
+	if (plotter.m_sampleConfig.nEvents > 0 && 
+	    plotter.m_sampleConfig.nEvents < tree->GetEntriesFast()) nEntries = plotter.m_sampleConfig.nEvents;
+	else nEntries = tree->GetEntriesFast();
+	
+	std::cout << "[" << argv[0] << "] Number of entries/sample = " << nEntries << std::endl;
+	
+	int nFilteredEvents = 0;
+	
+	float weight = 1.;
+	// Add cross section weight -> To take into account QCD filter efficiencies
+	if(plotter.m_sampleConfig.applyReweighting==true)
+	  weight *= (plotter.m_sampleConfig.QCDWeight/nEntries);
       
-      std::cout << "Weight per event = " << weight << std::endl;	
+	std::cout << "Weight per event = " << weight << std::endl;	
+	
+	for (Long64_t iEvent=0; iEvent<nEntries; ++iEvent) {
+	  if (tree->LoadTree(iEvent)<0) break;
+	
+	  print_progress(nEntries, iEvent);
+	 
+	  evBranch->GetEntry(iEvent);
 
-      for (Long64_t iEvent=0; iEvent<nEntries; ++iEvent) {
-	if (tree->LoadTree(iEvent)<0) break;
+	  plotter.fill(ev->muons, ev->hlt, (*ev), weight);
 	
-	print_progress(nEntries, iEvent);
-	
-	evBranch->GetEntry(iEvent);
-
-	plotter.fill(ev->muons, ev->hlt, (*ev), weight);
-	
-	plotter.fillGen(ev->genParticles, (*ev));
-      }
+	  plotter.fillGen(ev->genParticles, (*ev));
+	}
       
-      std::cout << "[==================================================] 100% " << std::endl;
+	std::cout << "[==================================================] 100% " << std::endl;
+	
+	delete tree;
+	inputFile->Close();
+	delete inputFile;
+      } // for(ifiles)
       
       delete ev;
-      inputFile->Close();
       std::cout << std::endl;
-	   
+      
     }
   
   muon_pog::comparisonPlots(plotters,outputFile,dirName);
@@ -367,11 +377,6 @@ std::vector<TString> muon_pog::TagAndProbeConfig::toArray(const std::string& ent
 
 void muon_pog::Plotter::book(TFile *outFile)
 {
-
-  const double etaBins[9] = {-2.4,-1.8,-1.2,-0.6,0.0,
-   			      0.6, 1.2, 1.8, 2.4};
-  const double pTBins[7] = {5,15,25,35,50,70,100};
-  const double VtxBins[10] = {0,10,20,24,28,32,36,40,50,60};
 	  
   TString sampleTag = m_sampleConfig.sampleName;
   
@@ -400,6 +405,11 @@ void muon_pog::Plotter::book(TFile *outFile)
   m_2Dyields["GenMuon"]->GetXaxis()->SetBinLabel(3, "Gen Muon Others");
   m_2Dyields["GenMuon"]->GetXaxis()->SetBinLabel(4, "Gen Muon Total");
   for (unsigned nre=0; nre<4; nre++) m_2Dyields["GenMuon"]->GetYaxis()->SetBinLabel(nre+1,region[nre]);
+
+  m_plots["NumberOfGenMuonsFromZ"]  = new TH1D ("NMuons_GenFromZ", " Number of GEN Muons from Z per Evt ; N. Muons; # entries", 4, 0., 4.);
+  m_plots["NumberOfGenMuonsOther"]  = new TH1D ("NMuons_GenOther", " Number of GEN Muons (NOT from Z) per Evt ; N. Muons; # entries", 4, 0., 4.);
+
+  m_plots["NMuons"] = new TH1D ("NMuons", " Number of Muons per Evt ; N. Muons; # entries", 4, 0., 4.);
 
   // Vertices
   for (unsigned npu=0; npu<4; npu++){
@@ -443,36 +453,43 @@ void muon_pog::Plotter::book(TFile *outFile)
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dZVsPt"]    = new TProfile("dZVsPt_"  + IDRegName, IDRegTitle + " #Delta Z Vs Pt ; #Delta Z; p_{T} [GeV]" , 200, 0, 2. , 0., 100.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsdXY"]   = new TProfile("PtVsdXY_" + IDRegName, IDRegTitle + " Pt Vs #Delta XY ; p_{T} [GeV]; #Delta XY [cm]", 100,0., 100, 0., 2.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsdZ"]    = new TProfile("PtVsdZ_"  + IDRegName, IDRegTitle + " Pt Vs #Delta Z ; p_{T} [GeV]; #Delta Z [cm]", 100,0., 100, 0., 2.);
-	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsVtx"]   = new TProfile("PtVsVtx_" + IDRegName, IDRegTitle + " Pt Vs #Vtx ; p_{T} [GeV]; N. Vtx", 100,0., 100, 0., 80.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsVtx"]   = new TProfile("PtVsVtx_" + IDRegName, IDRegTitle + " Pt Vs #Vtx ; p_{T} [GeV]; N. Vtx", 100,0., 100, 0., 60.);
 
 	m_2Dplots[IDName[nid]+region[nre]+PUr[npu]+"PtVspdgID"]   = new TH2D("PtVspdgID_" + IDRegName, IDRegTitle + " Pt Vs PDG ID ; p_{T} [GeV]; Particle ID", 100,0., 100, 1000, -1., 999.);
 
-	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsRelIso"]   = new TProfile("VtxVsRelIso_" + IDRegName, IDRegTitle + " Vtx Vs Relative Isolation ; N. Vtx; Relative Iso.", 80, 0., 80., 0., 1.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsRelIso"]   = new TProfile("VtxVsRelIso_" + IDRegName, IDRegTitle + " Vtx Vs Relative Isolation ; N. Vtx; Relative Iso.", 60, 0., 60., 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsRelIso"]    = new TProfile("PtVsRelIso_"  + IDRegName, IDRegTitle + " Pt Vs Relative Isolation ; p_{T} [GeV]; Relative Iso.", 100,0., 100, 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"EtaVsRelIso"]   = new TProfile("EtaVsRelIso_" + IDRegName, IDRegTitle + " Eta Vs Relative Isolation ; #eta; Relative Iso.", 48, -2.4, 2.4, 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dXYVsRelIso"]   = new TProfile("dXYVsRelIso_" + IDRegName, IDRegTitle + " #Delta XY Vs Relative Isolation ; #Delta XY; Relative Iso.", 200, 0, 2. , 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dZVsRelIso"]    = new TProfile("dZVsRelIso_"  + IDRegName, IDRegTitle + " #Delta Z Vs Relative Isolation ; #Delta Z; Relative Iso.", 200, 0, 2. , 0., 1.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"NGenJetsVsRelIso"]   = new TProfile("NGenJetsVsRelIso_" + IDRegName, IDRegTitle + " Number of GenJets Vs Relative Isolation ; GEN-Jets Multiplicity; Relative Iso.", 7, -0.5, 6.5, 0., 1.);
 
-	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsChHadIso"] = new TProfile("VtxVsChHadIso_" + IDRegName, IDRegTitle + " Vtx Vs Charged Hadron Isolation ; N. Vtx; Charged Had. Iso.", 80, 0., 80., 0., 10.);
-	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsNeHadIso"] = new TProfile("VtxVsNeHadIso_" + IDRegName, IDRegTitle + " Vtx Vs Neutral Hadron Isolation ; N. Vtx; Neutral Had. Iso.", 80, 0., 80., 0., 10.); 
-	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsPhIso"]    = new TProfile("VtxVsPhIso_"    + IDRegName, IDRegTitle + " Vtx Vs Photon Isolation ; N. Vtx; Photon Iso.", 80, 0., 80., 0., 60.);
-	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsPUIso"]    = new TProfile("VtxVsPUIso_"    + IDRegName, IDRegTitle + " Vtx Vs PU Isolation ; N. Vtx; PU Iso.", 80, 0., 80., 0., 60.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsChHadIso"] = new TProfile("VtxVsChHadIso_" + IDRegName, IDRegTitle + " Vtx Vs Charged Hadron Isolation ; N. Vtx; Charged Had. Iso.", 60, 0., 60., 0., 10.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsNeHadIso"] = new TProfile("VtxVsNeHadIso_" + IDRegName, IDRegTitle + " Vtx Vs Neutral Hadron Isolation ; N. Vtx; Neutral Had. Iso.", 60, 0., 60., 0., 10.); 
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsPhIso"]    = new TProfile("VtxVsPhIso_"    + IDRegName, IDRegTitle + " Vtx Vs Photon Isolation ; N. Vtx; Photon Iso.", 60, 0., 60., 0., 60.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsPUIso"]    = new TProfile("VtxVsPUIso_"    + IDRegName, IDRegTitle + " Vtx Vs PU Isolation ; N. Vtx; PU Iso.", 60, 0., 60., 0., 60.);
 
 
-	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsRelIsoNoDB"]   = new TProfile("VtxVsRelIsoNoDB_" + IDRegName, IDRegTitle + " Vtx Vs Relative Isolation  w/o #Delta#beta ; N. Vtx; Relative Iso. (No #Delta#beta)", 80, 0., 80., 0., 1.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"VtxVsRelIsoNoDB"]   = new TProfile("VtxVsRelIsoNoDB_" + IDRegName, IDRegTitle + " Vtx Vs Relative Isolation  w/o #Delta#beta ; N. Vtx; Relative Iso. (No #Delta#beta)", 60, 0., 60., 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"PtVsRelIsoNoDB"]    = new TProfile("PtVsRelIsoNoDB_"  + IDRegName, IDRegTitle + " Pt Vs Relative Isolation  w/o #Delta#beta ; p_{T} [GeV]; Relative Iso. (No #Delta#beta)", 100,0., 100, 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"EtaVsRelIsoNoDB"]   = new TProfile("EtaVsRelIsoNoDB_" + IDRegName, IDRegTitle + " Eta Vs Relative Isolation  w/o #Delta#beta ; #eta; Relative Iso. (No #Delta#beta)", 48, -2.4, 2.4, 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dXYVsRelIsoNoDB"]   = new TProfile("dXYVsRelIsoNoDB_" + IDRegName, IDRegTitle + " #Delta XY Vs Relative Isolation w/o #Delta#beta ; #Delta XY; Relative Iso.", 200, 0, 2. , 0., 1.);
 	m_prof[IDName[nid]+region[nre]+PUr[npu]+"dZVsRelIsoNoDB"]    = new TProfile("dZVsRelIsoNoDB_"  + IDRegName, IDRegTitle + " #Delta Z Vs Relative Isolation w/o #Delta#beta ; #Delta Z; Relative Iso.", 200, 0, 2. , 0., 1.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+"NGenJetsVsRelIsoNoDB"]   = new TProfile("NGenJetsVsRelIsoNoDB_" + IDRegName, IDRegTitle + " Number of GenJets Vs Relative Isolation w/o #Delta#beta ; GEN-Jets Multiplicity; Relative Iso.", 7, -0.5, 6.5, 0., 1.);
+
 	
 	m_plots[IDName[nid]+region[nre]+PUr[npu]+"RelIsoCut"] = new TH1D ("RelIsoCut_" + IDRegName, IDRegTitle + " Relative Isolation Cut ; Relative Iso. Cut; # entries", 101, 0., 1.01);
+
+	m_plots[IDName[nid]+region[nre]+PUr[npu]+"NumGenJets"] = new TH1D ("NGenJets_" + IDRegName, IDRegTitle + " Number of GEN Jets ; GEN-Jets Multiplicity; # entries", 7, -0.5, 6.5);
 	
 	for (unsigned niso=0; niso<=2; niso++){
 	  
 	  IDRegName  = IDName[nid] + "_" + region[nre] + "_" + PUr[npu] + "_" + isowp[niso];
 	  IDRegTitle = "ID:" + IDName[nid] + " - REGION:" + region[nre] + " - PU:" + PUr[npu] + " - ISO:" + isowp[niso];      
 	  
-	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"Vtx"] = new TH1D ("Vtx_" + IDRegName,  IDRegTitle + " Vtx ; N. Vtx; # entries", 80, 0., 80.);
+	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"NMuons"] = new TH1D ("NMuons_" + IDRegName, IDRegTitle + " Number of Muons per Evt ; N. Muons; # entries", 4, 0., 4.);
+
+	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"Vtx"] = new TH1D ("Vtx_" + IDRegName,  IDRegTitle + " Vtx ; N. Vtx; # entries", 60, 0., 60.);
 	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"Pt"]  = new TH1D ("Pt_"  + IDRegName,  IDRegTitle + " Pt ; p_{T} [GeV]; # entries", 100,0., 100);
 	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"Eta"] = new TH1D ("Eta_" + IDRegName,  IDRegTitle + " Eta ; #eta; # entries", 48, -2.4, 2.4);
 	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"dXY"] = new TH1D ("dXY_" + IDRegName,  IDRegTitle + " #Delta XY ; #Delta XY; # entries", 200, 0, 2.);
@@ -486,23 +503,31 @@ void muon_pog::Plotter::book(TFile *outFile)
 	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"TotalIso"]     = new TH1D ("TotalIso_" + IDRegName,  IDRegTitle + " Total Isolation ; Total Iso.; # entries", 100, 0., 200);
 	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"TotalIsoNoDB"] = new TH1D ("TotalIsoNoDB_" + IDRegName,  IDRegTitle + " Total Isolation w/o #Delta#beta ; Total Iso. (No #Delta#beta); # entries", 100, 0., 200);
 
-	  m_prof[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"VtxVsTotalIso"]   = new TProfile("VtxVsTotalIso_" + IDRegName, IDRegTitle + " Vtx Vs Total Isolation ; N. Vtx; Total Iso.", 80, 0., 80., 0., 200.);
+	  m_prof[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"VtxVsTotalIso"]   = new TProfile("VtxVsTotalIso_" + IDRegName, IDRegTitle + " Vtx Vs Total Isolation ; N. Vtx; Total Iso.", 60, 0., 60., 0., 200.);
 	  m_prof[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"PtVsTotalIso"]    = new TProfile("PtVsTotalIso_"  + IDRegName, IDRegTitle + " Pt Vs Total Isolation ; p_{T} [GeV]; Total Iso.", 100,0., 100, 0., 200.);
 	  m_prof[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"EtaVsTotalIso"]   = new TProfile("EtaVsTotalIso_" + IDRegName, IDRegTitle + " Eta Vs Total Isolation ; #eta; Total Iso.", 48, -2.4, 2.4, 0., 200.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"NGenJetsVsTotalIso"]   = new TProfile("NGenJetsVsTotalIso_" + IDRegName, IDRegTitle + " Number of GenJets Vs Total Isolation ; GEN-Jets Multiplicity; Total Iso.", 7, -0.5, 6.5, 0., 200.);
 	  
-	  m_prof[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"VtxVsTotalIsoNoDB"]   = new TProfile("VtxVsTotalIsoNoDB_" + IDRegName, IDRegTitle + " Vtx Vs Total Isolation  w/o #Delta#beta ; N. Vtx; Total Iso. (No #Delta#beta)", 80, 0., 80., 0., 200.);
+	  m_prof[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"VtxVsTotalIsoNoDB"]   = new TProfile("VtxVsTotalIsoNoDB_" + IDRegName, IDRegTitle + " Vtx Vs Total Isolation  w/o #Delta#beta ; N. Vtx; Total Iso. (No #Delta#beta)", 60, 0., 60., 0., 200.);
 	  m_prof[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"PtVsTotalIsoNoDB"]    = new TProfile("PtVsTotalIsoNoDB_"  + IDRegName, IDRegTitle + " Pt Vs Total Isolation  w/o #Delta#beta ; p_{T} [GeV]; Total Iso. (No #Delta#beta)", 100,0., 100, 0., 200.);
 	  m_prof[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"EtaVsTotalIsoNoDB"]   = new TProfile("EtaVsTotalIsoNoDB_" + IDRegName, IDRegTitle + " Eta Vs Total Isolation  w/o #Delta#beta ; #eta; Total Iso. (No #Delta#beta)", 48, -2.4, 2.4, 0., 200.);
+	m_prof[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"NGenJetsVsTotalIsoNoDB"]   = new TProfile("NGenJetsVsTotalIsoNoDB_" + IDRegName, IDRegTitle + " Number of GenJets Vs Total Isolation ; GEN-Jets Multiplicity; Total Iso. (No #Delta#beta)", 7, -0.5, 6.5, 0., 200.);
+
+	  m_plots[IDName[nid]+region[nre]+PUr[npu]+isowp[niso]+"NumGenJets"] = new TH1D ("NGenJets_" + IDRegName, IDRegTitle + " Number of GEN Jets ; GEN-Jets Multiplicity; # entries", 7, -0.5, 6.5);
 
 
-	}// for(npu)
-      }// for(niso)
+	}// for(niso)
+      }// for(npu)
     } // for(nre)
   } // for(nid)
   
 } // void::book 
 
 void muon_pog::Plotter::fillGen(const std::vector<muon_pog::GenParticle> & genpars, const muon_pog::Event & ev){
+
+  // N. Muons
+  int NmuonFromZ = 0;
+  int NmuonOther = 0;
   
   float etaBarrel = 1.2;  
   float pTeta = 20.0;
@@ -512,23 +537,17 @@ void muon_pog::Plotter::fillGen(const std::vector<muon_pog::GenParticle> & genpa
 
   for (auto & genpar : genpars){
 
-    bool genZmuon     = false;
-    bool genOthermuon = false;
-
     if(abs(genpar.pdgId) == 13 &&
        genpar.pt          > m_tnpConfig.probe_minPt &&
        fabs(genpar.eta)   < 2.4 ){
-
-      bool IsMuonpTCorr = false;
+      
+      bool genZmuon     = false;
+      
       // Check this with flags!!!!
       if (hasMother(genpar, 13)) continue;
-
+      
       // Z_id = 23
       genZmuon = hasMother(genpar, 23);
-      if(!genZmuon) genOthermuon = true;
-
-    }
-    if(genZmuon || genOthermuon){
       
       for (unsigned int nre = 0; nre<4; nre++){
 	
@@ -539,15 +558,23 @@ void muon_pog::Plotter::fillGen(const std::vector<muon_pog::GenParticle> & genpa
 	if (nre == 3 && (std::abs(genpar.eta) > 0.9 && std::abs(genpar.eta) < 1.3)) etaRegion = true;
 	
 	if (!etaRegion)     continue;
-
-	if (genZmuon)     m_2Dyields["GenMuon"]->Fill(1,nre); // From Z
-	if (genOthermuon) m_2Dyields["GenMuon"]->Fill(2,nre); 
+	
+	if (genZmuon) m_2Dyields["GenMuon"]->Fill(1,nre); // From Z
+	else          m_2Dyields["GenMuon"]->Fill(2,nre); 
 	m_2Dyields["GenMuon"]->Fill(3,nre); // Number of GenMuons
 	
       }// for(nre)
+      
+      if (genZmuon) NmuonFromZ++;
+      else NmuonOther++;
+
     }//if(GenMuon)
     
   }// for(genpar)  
+
+  m_plots["NumberOfGenMuonsFromZ"]->Fill(NmuonFromZ);
+  m_plots["NumberOfGenMuonsOther"]->Fill(NmuonOther);
+
 }
 
 void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
@@ -561,9 +588,9 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
   bool IsPURegime[4];
   for (int bnpu = 0; bnpu<4; bnpu++) IsPURegime[bnpu] = false;
   IsPURegime[0] = true;
-  IsPURegime[1] = (ev.nVtx < 25);
-  IsPURegime[2] = (ev.nVtx >= 25 && ev.nVtx < 45);
-  IsPURegime[3] = (ev.nVtx >= 45);
+  IsPURegime[1] = (ev.nVtx < 15);
+  IsPURegime[2] = (ev.nVtx >= 15 && ev.nVtx < 25);
+  IsPURegime[3] = (ev.nVtx >= 25);
 
   TVector3 RecoVtx;
   RecoVtx.SetXYZ(ev.primaryVertex[0],ev.primaryVertex[1],ev.primaryVertex[2]);
@@ -600,13 +627,35 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
 
   } // for(npu)
 
+  // Number of GEN-Jets
+  int NGenJets = ev.genjets.size();
+
+  // Number of muons
+  std::map<TString, int>  number;
+  // -- Initialization
+  number["muons"] = 0;
+  for (unsigned int mid = 0; mid<8; mid++)
+    for (unsigned int nre = 0; nre<4; nre++)
+      for (unsigned int npu = 0; npu<4; npu++)
+	for(int isocat=0;isocat<=2;isocat++)
+	  number[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"muons"] = 0;
+
   // Muon General Cuts
   float etaBarrel = 1.2;  
   float pTeta = 20.0;
 
   float DBfactor = m_tnpConfig.iso_DeltaBeta;
 
+  //---------------------------------------
+  // PV comparison wrt the HP position  ---
+  //---------------------------------------
+  // if( std::abs(RecoVtx.XYvector().Mod() - GenVtx.XYvector().Mod()) < 0.001 &&
+  //     std::abs(RecoVtx.Z() - GenVtx.Z()) < 5.0 ){
+
   for (auto & muon : muons){
+
+    //Muons/Evt
+    number["muons"]++;
 
     // Total Number of Muons
     m_2Dyields["RecoMuon"]->Fill(9., 0., weight);
@@ -706,12 +755,14 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
 	    if(muTk.Pt() > pTeta) m_prof[IDName[mid]+region[nre]+PUr[npu]+"EtaVsRelIso"]->Fill(muTk.Eta(), RelIso, weight);
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"dXYVsRelIso"] ->Fill(dXY, RelIso, weight);
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"dZVsRelIso"]  ->Fill(dZ,  RelIso, weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"NumGenJetsVsRelIso"]->Fill(NGenJets,  RelIso, weight);
 
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"VtxVsRelIsoNoDB"]->Fill(ev.nVtx, RelIsoNoDB, weight);
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"PtVsRelIsoNoDB"] ->Fill(muTk.Pt(), RelIsoNoDB, weight);
 	    if(muTk.Pt() > pTeta) m_prof[IDName[mid]+region[nre]+PUr[npu]+"EtaVsRelIsoNoDB"]->Fill(muTk.Eta(), RelIsoNoDB, weight);
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"dXYVsRelIsoNoDB"]->Fill(dXY, RelIsoNoDB, weight);
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"dZVsRelIsoNoDB"] ->Fill(dZ,  RelIsoNoDB, weight);
+	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"NumGenJetsVsRelIsoNoDB"]->Fill(NGenJets,  RelIsoNoDB, weight);
 	    
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"VtxVsChHadIso"]->Fill(ev.nVtx, ChHadIso, weight);
 	    m_prof[IDName[mid]+region[nre]+PUr[npu]+"VtxVsNeHadIso"]->Fill(ev.nVtx, NeHadIso, weight);
@@ -722,6 +773,10 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
 	    for (int ibin=vRelIsoCut; ibin<=100; ibin++) m_plots[IDName[mid]+region[nre]+PUr[npu]+"RelIsoCut"]->AddBinContent(ibin, weight);
 	    m_plots[IDName[mid]+region[nre]+PUr[npu]+"RelIsoCut"]->AddBinContent(101, weight); // Total Number of Muons 
 	    
+
+	    m_plots[IDName[mid]+region[nre]+PUr[npu]+"NumGenJets"]->Fill(NGenJets, weight);
+
+
 	    for(int isocat=0;isocat<=2;isocat++){
 	      bool IsIso = false;
 	      if(isocat == 0) IsIso = true;
@@ -730,11 +785,14 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
 	      
 	      if(!IsIso) continue;
 	      
+	      number[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"muons"]++;
+	      
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"Vtx"]->Fill(ev.nVtx, weight);
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"Pt"] ->Fill(muTk.Pt(), weight);
 	      if(muTk.Pt() > pTeta) m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"Eta"]->Fill(muTk.Eta(), weight);
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"dXY"]->Fill(dXY, weight);
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"dZ"] ->Fill(dZ,  weight);
+	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"NumGenJets"]->Fill(NGenJets, weight);
 
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"ChHadIso"]->Fill(ChHadIso, weight);
 	      m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"NeHadIso"]->Fill(NeHadIso, weight);
@@ -747,11 +805,14 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
 	      m_prof[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"VtxVsTotalIso"]->Fill(ev.nVtx, TotalIso, weight);
 	      m_prof[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"PtVsTotalIso"] ->Fill(muTk.Pt(), TotalIso, weight);
 	      if(muTk.Pt() > pTeta) m_prof[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"EtaVsTotalIso"]->Fill(muTk.Eta(), TotalIso, weight);
+	      m_prof[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"NumGenJetsVsRelIso"]->Fill(NGenJets,  RelIso, weight);
 	      
 	      m_prof[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"VtxVsTotalIsoNoDB"]->Fill(ev.nVtx, TotalIsoNoDB, weight);
 	      m_prof[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"PtVsTotalIsoNoDB"] ->Fill(muTk.Pt(), TotalIsoNoDB, weight);
 	      if(muTk.Pt() > pTeta) m_prof[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"EtaVsTotalIsoNoDB"]->Fill(muTk.Eta(), TotalIsoNoDB, weight);
+	      m_prof[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"NumGenJetsVsRelIsoNoDB"]->Fill(NGenJets,  RelIsoNoDB, weight);
 	      
+
 	    } // for(IsoCategory)
 	    	    
 	  } // for(PURegime)
@@ -762,8 +823,16 @@ void muon_pog::Plotter::fill(const std::vector<muon_pog::Muon> & muons,
       
     } // if(muon pT eta)
   }// for(Muons)
+
+  m_plots["NMuons"]->Fill(number["muons"],weight);
   
+  for (unsigned int mid = 0; mid<8; mid++)
+    for (unsigned int nre = 0; nre<4; nre++)
+      for (unsigned int npu = 0; npu<4; npu++)
+	for(int isocat=0;isocat<=2;isocat++)
+	  m_plots[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"NMuons"]->Fill(number[IDName[mid]+region[nre]+PUr[npu]+isowp[isocat]+"muons"],weight);
   
+  //}// IF(PV-HP)  
 } // void::fill
 
 
@@ -840,6 +909,25 @@ void muon_pog::copyPhp(const TString &  outputDir)
 	copyPhp(TString(dirIt->path().string()));
     }
 
+}
+
+std::vector<TString> GetListOfFiles(TString FileName){
+  std::vector<TString> ListOfSamples;
+  std::ifstream InFile;
+  InFile.open(FileName);
+  if (!InFile){
+    std::cout << "File " << FileName << " not found!" << std::endl;
+    std::exit(0);
+  }
+  else{
+    std::string tmpLine;
+    while (std::getline(InFile,tmpLine)){
+      TString TxtLine = tmpLine;
+      if (!TxtLine.Contains("#") && TxtLine.Contains(".root")) ListOfSamples.push_back(TxtLine);
+    }// while
+  }
+  
+  return ListOfSamples;
 }
 
 //  LocalWords:  IsoTight
