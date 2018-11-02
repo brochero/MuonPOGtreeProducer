@@ -12,11 +12,11 @@ BASETREEDIR="../src"
 rm -f ${fileRUN}
 
 echo "[variableComparisonPlots]: Compiling"
-rootcling -f MuonPogTreeDict.C -c ${BASETREEDIR}/MuonPogTree.h ${BASETREEDIR}/MuonPogTreeLinkDef.h
+#rootcling -f MuonPogTreeDict.C -c ${BASETREEDIR}/MuonPogTree.h ${BASETREEDIR}/MuonPogTreeLinkDef.h
 
 g++ -g -std=gnu++1y -I${ROOTINCDIR} ${fileC} MuonPogTreeDict.C ${ROOTLIBS} -lX11 -lboost_system -lboost_filesystem -o ${fileRUN}
 
 echo "[invariantMassPlots]: Running with parameters $@" 
 ${fileRUN} $@
 
-rm -f MuonPogTreeDict.C MuonPogTreeDict.h MuonPogTreeDict_rdict.pcm
+# rm -f MuonPogTreeDict.C MuonPogTreeDict.h MuonPogTreeDict_rdict.pcm
