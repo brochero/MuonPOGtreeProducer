@@ -163,6 +163,19 @@ namespace muon_pog {
     Int_t   isTight;
     Int_t   isMedium;
     Int_t   isHighPt;
+
+    // Muon Selectors
+    Int_t Sel_CutBasedIdLoose;
+    Int_t Sel_CutBasedIdMedium;
+    Int_t Sel_CutBasedIdMediumPrompt;
+    Int_t Sel_CutBasedIdTight;
+    Int_t Sel_CutBasedIdGlobalHighPt;
+    Int_t Sel_CutBasedIdTrkHighPt;
+    Int_t Sel_SoftCutBasedId;
+    Int_t Sel_SoftMvaId;
+    Int_t Sel_MvaLoose;
+    Int_t Sel_MvaMedium;
+    Int_t Sel_MvaTight;
     
     //Detector Based Isolation
     Float_t trackerIso;
@@ -175,9 +188,22 @@ namespace muon_pog {
     Float_t photonIso;
     Float_t neutralHadronIso;
 
-
     Float_t isoPflow04; // PF isolation in dR<0.4 cone dBeta
     Float_t isoPflow03; // PF isolation in dR<0.3 cone dBeta
+    
+    // Mini Isolation
+    Float_t MiniIsoCH, MiniIsoNH, MiniIsoPH, MiniIsoPU;
+
+    // PUPPI Isolation
+    Float_t PUPPIIso, PUPPIIsoCH, PUPPIIsoNH, PUPPIIsoPH;
+    Float_t PUPPILepIso;
+    Float_t PUPPINoLepIso;
+
+    // SimMatch
+    Int_t IsMatchedPrimaryMuon, IsNotMatched, IsMatchedElectron, IsMatchedMuonHF, IsMatchedMuonLF; 
+    Int_t IsGhostPrimaryMuon, IsGhostMuonHF, IsGhostMuonLF;
+
+    Int_t SimpdgId, SimmotherPdgId;
 
     Float_t dxy;       // signed transverse distance to primary vertex [cm]
     Float_t dz;        // signed longitudinal distance to primary vertex at min. transv. distance [cm]
