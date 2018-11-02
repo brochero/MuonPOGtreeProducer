@@ -53,7 +53,10 @@
 
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
+#include "DataFormats/JetReco/interface/JetCollection.h"
 
+// MiniIsolation
+#include "PhysicsTools/PatUtils/interface/MiniIsolation.h"
 
 #include "MuonPOGtreeProducer/Tools/src/MuonPogTree.h"
 #include "TTree.h"
@@ -86,11 +89,18 @@ private:
   void fillPV(const edm::Handle<std::vector<reco::Vertex> > &);
   
   
-  Int_t fillMuons(const edm::Handle<edm::View<reco::Muon> > &,
+  Int_t fillMuons(const edm::Handle<edm::View<pat::Muon> > &,
 		  const edm::Handle<std::vector<reco::Vertex> > &,
-		  const edm::Handle<reco::BeamSpot> &);
+		  const edm::Handle<reco::BeamSpot> &,
+		  const edm::Handle<std::vector<pat::PackedCandidate>> &,
+		  const edm::Handle<edm::ValueMap<double>>&,
+		  const edm::Handle<edm::ValueMap<double>>&,
+		  const edm::Handle<edm::ValueMap<double>>&,
+		  const edm::Handle<edm::ValueMap<double>>&,
+		  const edm::Handle<edm::ValueMap<double>>&,
+		  const edm::Handle<edm::ValueMap<double>>&);
 
-  void fillJets(const edm::Handle<edm::View<reco::PFJet> > &);
+  void fillJets(const edm::Handle<edm::View<pat::Jet> > &);
 
   void fillGenJets(const edm::Handle<edm::View<reco::GenJet> > &);
 
@@ -106,8 +116,8 @@ private:
   std::string trigFilterCut_;
   std::string trigPathCut_;
 
-  edm::EDGetTokenT<edm::View<reco::Muon> > muonToken_;
-  edm::EDGetTokenT<edm::View<reco::PFJet> > jetsToken_;
+  edm::EDGetTokenT<edm::View<pat::Muon> > muonToken_;
+  edm::EDGetTokenT<edm::View<pat::Jet> > jetsToken_;
   edm::EDGetTokenT<edm::View<reco::GenJet> > genjetsToken_;
   edm::EDGetTokenT<std::vector<reco::Vertex> > primaryVertexToken_;
   edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
@@ -123,6 +133,12 @@ private:
   edm::EDGetTokenT<LumiScalersCollection> scalersToken_;
     
   edm::EDGetTokenT<l1t::MuonBxCollection> l1Token_;
+
+  edm::EDGetTokenT<std::vector<pat::PackedCandidate> > pfCandsToken_;
+
+  edm::EDGetTokenT<edm::ValueMap<double>> PUPPIToken_,PUPPICHToken_,PUPPINHToken_,PUPPIPHToken_;
+  edm::EDGetTokenT<edm::ValueMap<double>> PUPPILepToken_;
+  edm::EDGetTokenT<edm::ValueMap<double>> PUPPINoLepToken_;
 
   Float_t m_minMuPtCut;
   Int_t m_minNMuCut;
@@ -148,10 +164,11 @@ MuonPogTreeProducer::MuonPogTreeProducer( const edm::ParameterSet & cfg )
   trigPathCut_ = cfg.getUntrackedParameter<std::string>("TrigPathCut", std::string("all"));
 
   tag = cfg.getUntrackedParameter<edm::InputTag>("MuonTag", edm::InputTag("muons"));
-  if (tag.label() != "none") muonToken_ = consumes<edm::View<reco::Muon> >(tag);
+  if (tag.label() != "none") muonToken_ = consumes<edm::View<pat::Muon> >(tag);
 
   tag = cfg.getUntrackedParameter<edm::InputTag>("JetTag", edm::InputTag("ak4PFJetsCHS"));
-  if (tag.label() != "none") jetsToken_ = consumes<edm::View<reco::PFJet> >(tag);
+  //tag = cfg.getUntrackedParameter<edm::InputTag>("JetTag", edm::InputTag("slimmedJets"));
+  if (tag.label() != "none") jetsToken_ = consumes<edm::View<pat::Jet> >(tag);
 
   tag = cfg.getUntrackedParameter<edm::InputTag>("GenJetTag", edm::InputTag("ak4GenJets"));
   if (tag.label() != "none") genjetsToken_ = consumes<edm::View<reco::GenJet> >(tag);
@@ -185,6 +202,23 @@ MuonPogTreeProducer::MuonPogTreeProducer( const edm::ParameterSet & cfg )
     
   tag = cfg.getUntrackedParameter<edm::InputTag>("l1MuonsTag", edm::InputTag("gmtStage2Digis:Muon:"));
   if (tag.label() != "none") l1Token_ = consumes<l1t::MuonBxCollection>(tag);
+
+  tag = cfg.getUntrackedParameter<edm::InputTag>("pfCandsTag", edm::InputTag("packedPFCandidates"));
+  if (tag.label() != "none") pfCandsToken_ = consumes<std::vector<pat::PackedCandidate>>(tag);
+
+  tag = cfg.getUntrackedParameter<edm::InputTag>("PUPPIMuonIsoTag", edm::InputTag("PUPPIMuonRelIso:PuppiCombined"));
+  if (tag.label() != "none") PUPPIToken_ = consumes<edm::ValueMap<double>>(tag);
+  tag = cfg.getUntrackedParameter<edm::InputTag>("PUPPIMuonIsoCHTag", edm::InputTag("PUPPIMuonRelIso:PuppiCombinedCH"));
+  if (tag.label() != "none") PUPPICHToken_ = consumes<edm::ValueMap<double>>(tag);
+  tag = cfg.getUntrackedParameter<edm::InputTag>("PUPPIMuonIsoNHTag", edm::InputTag("PUPPIMuonRelIso:PuppiCombinedNH"));
+  if (tag.label() != "none") PUPPINHToken_ = consumes<edm::ValueMap<double>>(tag);
+  tag = cfg.getUntrackedParameter<edm::InputTag>("PUPPIMuonIsoPHTag", edm::InputTag("PUPPIMuonRelIso:PuppiCombinedPH"));
+  if (tag.label() != "none") PUPPIPHToken_ = consumes<edm::ValueMap<double>>(tag);
+
+  tag = cfg.getUntrackedParameter<edm::InputTag>("PUPPIMuonIsoLepTag", edm::InputTag("PUPPIMuonRelIso:PuppiWithLepton"));
+  if (tag.label() != "none") PUPPILepToken_ = consumes<edm::ValueMap<double>>(tag);
+  tag = cfg.getUntrackedParameter<edm::InputTag>("PUPPIMuonIsoNoLepTag", edm::InputTag("PUPPIMuonRelIso:PuppiWithoutLepton"));
+  if (tag.label() != "none") PUPPINoLepToken_ = consumes<edm::ValueMap<double>>(tag);
 
   m_minMuPtCut = cfg.getUntrackedParameter<double>("MinMuPtCut", 0.);
   m_minNMuCut  = cfg.getUntrackedParameter<int>("MinNMuCut",  0.);
@@ -375,20 +409,44 @@ void MuonPogTreeProducer::analyze (const edm::Event & ev, const edm::EventSetup 
   // std::cout << "-----------------------------------------------------------" << std::endl;
   // std::cout << "-----------------------------------------------------------" << std::endl;
   // Get muons  
-  edm::Handle<edm::View<reco::Muon> > muons;
+  edm::Handle<edm::View<pat::Muon> > muons;
   if (!muonToken_.isUninitialized() ) 
     { 
       if (!ev.getByToken(muonToken_, muons)) 
 	edm::LogError("") << "[MuonPogTreeProducer] Muon collection does not exist !!!";
+    }
+
+  // Get PF Candidates  
+  edm::Handle< std::vector<pat::PackedCandidate> > pfCands;
+  if (!pfCandsToken_.isUninitialized() ) 
+    { 
+      if (!ev.getByToken(pfCandsToken_, pfCands)) 
+	edm::LogError("") << "[MuonPogTreeProducer] PF Candidates collection does not exist !!!";
+    }
+
+  // Get PUPPI Isolation  
+  edm::Handle< edm::ValueMap<double> > PUPPICom, PUPPICHCom,PUPPINHCom,PUPPIPHCom;
+  edm::Handle< edm::ValueMap<double> > PUPPILep;
+  edm::Handle< edm::ValueMap<double> > PUPPINoLep;
+  if (!PUPPIToken_.isUninitialized() || !PUPPICHToken_.isUninitialized() || !PUPPINHToken_.isUninitialized() || !PUPPIPHToken_.isUninitialized() || 
+      !PUPPILepToken_.isUninitialized() || !PUPPINoLepToken_.isUninitialized() ) 
+    { 
+      if (!ev.getByToken(PUPPIToken_,PUPPICom) || !ev.getByToken(PUPPICHToken_,PUPPICHCom) || !ev.getByToken(PUPPINHToken_,PUPPINHCom) || !ev.getByToken(PUPPIPHToken_,PUPPIPHCom) || 
+	  !ev.getByToken(PUPPILepToken_,PUPPILep) || !ev.getByToken(PUPPINoLepToken_,PUPPINoLep)) 
+	edm::LogError("") << "[MuonPogTreeProducer] PUPPI isolation collection does not exist !!!";
     }
   
 
   Int_t nGoodMuons = 0;
   eventId_.maxPTs.clear();
   // Fill muon information
-  if (muons.isValid() && vertexes.isValid() && beamSpot.isValid()) 
+  if (muons.isValid() && vertexes.isValid() && beamSpot.isValid() && pfCands.isValid() &&
+      PUPPICom.isValid() && PUPPICHCom.isValid() && PUPPINHCom.isValid() && PUPPIPHCom.isValid() && 
+      PUPPILep.isValid() && PUPPINoLep.isValid()) 
     {
-      nGoodMuons = fillMuons(muons,vertexes,beamSpot);
+      nGoodMuons = fillMuons(muons,vertexes,beamSpot,pfCands,
+			     PUPPICom,PUPPICHCom,PUPPINHCom,PUPPIPHCom,
+			     PUPPILep,PUPPINoLep);
     }
   eventId_.nMuons = nGoodMuons;
 
@@ -408,11 +466,11 @@ void MuonPogTreeProducer::analyze (const edm::Event & ev, const edm::EventSetup 
     }
     
   // Get jets  
-  edm::Handle<edm::View<reco::PFJet> > jets;
+  edm::Handle<edm::View<pat::Jet> > jets;
   if (!jetsToken_.isUninitialized() ) 
     { 
       if (!ev.getByToken(jetsToken_, jets)) 
-	edm::LogError("") << "[MuonPogTreeProducer] PFJet collection does not exist !!!";
+  	edm::LogError("") << "[MuonPogTreeProducer] PFJet collection does not exist !!!";
     }
   
   // Fill jet information if there are good muons in the event
@@ -429,7 +487,7 @@ void MuonPogTreeProducer::analyze (const edm::Event & ev, const edm::EventSetup 
         if (!ev.getByToken(l1Token_, l1s))
 	  edm::LogError("") << "[MuonPogTreeProducer] L1 muon bx collection does not exist !!!";
         else {
-            fillL1(l1s);
+	  //fillL1(l1s);
         }
     }
     
@@ -632,20 +690,28 @@ void MuonPogTreeProducer::fillPV(const edm::Handle<std::vector<reco::Vertex> > &
 }
 
 
-Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > & muons,
+Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<pat::Muon> > & muons,
 				     const edm::Handle<std::vector<reco::Vertex> > & vertexes,
-				     const edm::Handle<reco::BeamSpot> & beamSpot)
+				     const edm::Handle<reco::BeamSpot> & beamSpot,
+				     const edm::Handle<std::vector<pat::PackedCandidate>> & pfCands,
+				     const edm::Handle<edm::ValueMap<double>>& puppiCom,
+				     const edm::Handle<edm::ValueMap<double>>& puppiCHCom,
+				     const edm::Handle<edm::ValueMap<double>>& puppiNHCom,
+				     const edm::Handle<edm::ValueMap<double>>& puppiPHCom,
+				     const edm::Handle<edm::ValueMap<double>>& puppiLep,
+				     const edm::Handle<edm::ValueMap<double>>& puppiNoLep)
 {
+  // edm::View<reco::Muon>::const_iterator muonIt  = muons->begin();
+  // edm::View<reco::Muon>::const_iterator muonEnd = muons->end();
   
-  edm::View<reco::Muon>::const_iterator muonIt  = muons->begin();
-  edm::View<reco::Muon>::const_iterator muonEnd = muons->end();
-  
-  for (; muonIt != muonEnd; ++muonIt) 
+  // for (; muonIt != muonEnd; ++muonIt) 
+  //   {
+      
+  for (unsigned int im=0; im<muons->size(); im++)
+    //const reco::Muon& mu = (*muonIt);
     {
-      
+      const reco::Muon& mu = muons->at(im);
 
-      const reco::Muon& mu = (*muonIt);
-      
       bool isGlobal      = mu.isGlobalMuon();
       bool isTracker     = mu.isTrackerMuon();
       bool isTrackerArb  = muon::isGoodMuon(mu, muon::TrackerMuonArbitrated); 
@@ -654,10 +720,6 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
       bool isPF          = mu.isPFMuon();
 
       bool hasInnerTrack = !mu.innerTrack().isNull();
-      bool hasTunePTrack = !mu.tunePMuonBestTrack().isNull();
-      bool hasPickyTrack = !mu.pickyTrack().isNull();
-      bool hasDytTrack = !mu.dytTrack().isNull();
-      bool hasTpfmsTrack = !mu.tpfmsTrack().isNull();
       
       muon_pog::Muon ntupleMu;
       
@@ -666,53 +728,11 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
       ntupleMu.phi    = mu.phi();
       ntupleMu.charge = mu.charge();
 
-      //if (ntupleMu.pt> 5) std::cout << "Mupt = " << ntupleMu.pt << " ; Mueta = " << ntupleMu.eta << " ; Muphi = " << ntupleMu.phi  << std::endl;
-
-
-      ntupleMu.fits.push_back(muon_pog::MuonFit(mu.pt(),mu.eta(),mu.phi(),
-						mu.charge(),mu.muonBestTrack()->ptError()));
-
-      ntupleMu.fits.push_back(muon_pog::MuonFit(hasInnerTrack ? mu.innerTrack()->pt()  : -1000.,
-      						hasInnerTrack ? mu.innerTrack()->eta() : -1000.,
-      						hasInnerTrack ? mu.innerTrack()->phi() : -1000.,
-      						hasInnerTrack ? mu.innerTrack()->charge()  : -1000.,
-      						hasInnerTrack ? mu.innerTrack()->ptError() : -1000.));
-
-      ntupleMu.fits.push_back(muon_pog::MuonFit(isStandAlone ? mu.outerTrack()->pt()  : -1000.,
-      						isStandAlone ? mu.outerTrack()->eta() : -1000.,
-      						isStandAlone ? mu.outerTrack()->phi() : -1000.,
-      						isStandAlone ? mu.outerTrack()->charge()  : -1000.,
-      						isStandAlone ? mu.outerTrack()->ptError() : -1000.));
-
-      ntupleMu.fits.push_back(muon_pog::MuonFit(isGlobal ? mu.globalTrack()->pt()  : -1000.,
-      						isGlobal ? mu.globalTrack()->eta() : -1000.,
-      						isGlobal ? mu.globalTrack()->phi() : -1000.,
-      						isGlobal ? mu.globalTrack()->charge()  : -1000.,
-      						isGlobal ? mu.globalTrack()->ptError() : -1000.));
-
-      ntupleMu.fits.push_back(muon_pog::MuonFit(hasTunePTrack ? mu.tunePMuonBestTrack()->pt()  : -1000.,
-      						hasTunePTrack ? mu.tunePMuonBestTrack()->eta() : -1000.,
-      						hasTunePTrack ? mu.tunePMuonBestTrack()->phi() : -1000.,
-      						hasTunePTrack ? mu.tunePMuonBestTrack()->charge()  : -1000.,
-      						hasTunePTrack ? mu.tunePMuonBestTrack()->ptError() : -1000.));
-      
-      ntupleMu.fits.push_back(muon_pog::MuonFit(hasPickyTrack ? mu.pickyTrack()->pt()  : -1000.,
-                        hasPickyTrack ? mu.pickyTrack()->eta() : -1000.,
-                        hasPickyTrack ? mu.pickyTrack()->phi() : -1000.,
-                        hasPickyTrack ? mu.pickyTrack()->charge()  : -1000.,
-                        hasPickyTrack ? mu.pickyTrack()->ptError() : -1000.));
-      
-      ntupleMu.fits.push_back(muon_pog::MuonFit(hasDytTrack ? mu.dytTrack()->pt()  : -1000.,
-                        hasDytTrack ? mu.dytTrack()->eta() : -1000.,
-                        hasDytTrack ? mu.dytTrack()->phi() : -1000.,
-                        hasDytTrack ? mu.dytTrack()->charge()  : -1000.,
-                        hasDytTrack ? mu.dytTrack()->ptError() : -1000.));
-      
-      ntupleMu.fits.push_back(muon_pog::MuonFit(hasTpfmsTrack ? mu.tpfmsTrack()->pt()  : -1000.,
-                        hasTpfmsTrack ? mu.tpfmsTrack()->eta() : -1000.,
-                        hasTpfmsTrack ? mu.tpfmsTrack()->phi() : -1000.,
-                        hasTpfmsTrack ? mu.tpfmsTrack()->charge()  : -1000.,
-                        hasTpfmsTrack ? mu.tpfmsTrack()->ptError() : -1000.));
+      ntupleMu.isSoft    = 0;	  
+      ntupleMu.isTight   = 0;	  
+      ntupleMu.isHighPt  = 0;
+      ntupleMu.isLoose   = muon::isLooseMuon(mu)  ? 1 : 0;	  
+      ntupleMu.isMedium  = muon::isMediumMuon(mu) ? 1 : 0;	  
 
       // Detector Based Isolation
       reco::MuonIsolation detIso03 = mu.isolationR03();
@@ -730,16 +750,61 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
       ntupleMu.neutralHadronIso   = pfIso04.sumNeutralHadronEt;
       ntupleMu.photonIso          = pfIso04.sumPhotonEt;
 
+      ntupleMu.isoPflow04 = (pfIso04.sumChargedHadronPt+ 
+       			     std::max(0.,pfIso04.sumPhotonEt+pfIso04.sumNeutralHadronEt - 0.5*pfIso04.sumPUPt)) / mu.pt();
+    
+      ntupleMu.isoPflow03 = (pfIso03.sumChargedHadronPt+ 
+       			     std::max(0.,pfIso03.sumPhotonEt+pfIso03.sumNeutralHadronEt - 0.5*pfIso03.sumPUPt)) / mu.pt();
+
+      // NEW Selectors
+      ntupleMu.Sel_CutBasedIdLoose        = mu.passed(reco::Muon::CutBasedIdLoose);
+      ntupleMu.Sel_CutBasedIdMedium       = mu.passed(reco::Muon::CutBasedIdMedium);
+      ntupleMu.Sel_CutBasedIdMediumPrompt = mu.passed(reco::Muon::CutBasedIdMediumPrompt);
+      ntupleMu.Sel_CutBasedIdTight        = mu.passed(reco::Muon::CutBasedIdTight);
+      ntupleMu.Sel_CutBasedIdGlobalHighPt = mu.passed(reco::Muon::CutBasedIdGlobalHighPt);
+      ntupleMu.Sel_CutBasedIdTrkHighPt    = mu.passed(reco::Muon::CutBasedIdTrkHighPt);
+      ntupleMu.Sel_SoftCutBasedId         = mu.passed(reco::Muon::SoftCutBasedId);
+      ntupleMu.Sel_SoftMvaId              = mu.passed(reco::Muon::SoftMvaId);
+      ntupleMu.Sel_MvaLoose               = mu.passed(reco::Muon::MvaLoose);
+      ntupleMu.Sel_MvaMedium              = mu.passed(reco::Muon::MvaMedium);
+      ntupleMu.Sel_MvaTight               = mu.passed(reco::Muon::MvaTight);
+
+      // NEW Isolations
+      // PUPPI
+      edm::Ptr<reco::Muon> muPtr = muons->ptrAt( im );
+      ntupleMu.PUPPIIso   = (*puppiCom)[muPtr];
+      ntupleMu.PUPPIIsoCH = (*puppiCHCom)[muPtr];
+      ntupleMu.PUPPIIsoNH = (*puppiNHCom)[muPtr];
+      ntupleMu.PUPPIIsoPH = (*puppiPHCom)[muPtr];
+
+      ntupleMu.PUPPILepIso   = (*puppiLep)[muPtr];
+      ntupleMu.PUPPINoLepIso = (*puppiNoLep)[muPtr];
+      // -- MiniIsolation
+      const pat::Muon& pmu = muons->at(im);
+      ntupleMu.MiniIsoCH = pmu.miniPFIsolation().chargedHadronIso();
+      ntupleMu.MiniIsoNH = pmu.miniPFIsolation().neutralHadronIso();
+      ntupleMu.MiniIsoPH = pmu.miniPFIsolation().photonIso();
+      ntupleMu.MiniIsoPU = pmu.miniPFIsolation().puChargedHadronIso();
+      
+      // New Gen (SimHit) Matching
+      ntupleMu.IsMatchedPrimaryMuon = pmu.simType() == reco::MuonSimType::MatchedPrimaryMuon;
+      ntupleMu.IsNotMatched         = pmu.simType() == reco::MuonSimType::NotMatched;
+      ntupleMu.IsMatchedElectron    = pmu.simType() == reco::MuonSimType::MatchedElectron;
+      ntupleMu.IsMatchedMuonHF      = pmu.simType() == reco::MuonSimType::MatchedMuonFromHeavyFlavour;
+      ntupleMu.IsMatchedMuonLF      = pmu.simType() == reco::MuonSimType::MatchedMuonFromLightFlavour;
+      ntupleMu.IsGhostPrimaryMuon   = pmu.simType() == reco::MuonSimType::GhostPrimaryMuon;
+      ntupleMu.IsGhostMuonHF        = pmu.simType() == reco::MuonSimType::GhostMuonFromHeavyFlavour;
+      ntupleMu.IsGhostMuonLF        = pmu.simType() == reco::MuonSimType::GhostMuonFromLightFlavour;
+      // Additional Info
+      ntupleMu.SimpdgId             = pmu.simPdgId();
+      ntupleMu.SimmotherPdgId       = pmu.simMotherPdgId();
+
       ntupleMu.isGlobal     = isGlobal ? 1 : 0;	
       ntupleMu.isTracker    = isTracker ? 1 : 0;	
       ntupleMu.isTrackerArb = isTrackerArb ? 1 : 0;	
       ntupleMu.isRPC        = isRPC ? 1 : 0;
       ntupleMu.isStandAlone = isStandAlone ? 1 : 0;
       ntupleMu.isPF         = isPF ? 1 : 0;
-
-      ntupleMu.nHitsGlobal     = isGlobal     ? mu.globalTrack()->numberOfValidHits() : -999;	
-      ntupleMu.nHitsTracker    = isTracker    ? mu.innerTrack()->numberOfValidHits()  : -999;	
-      ntupleMu.nHitsStandAlone = isStandAlone ? mu.outerTrack()->numberOfValidHits()  : -999;
 
       ntupleMu.glbNormChi2              = isGlobal      ? mu.globalTrack()->normalizedChi2() : -999; 
       ntupleMu.trkNormChi2	        = hasInnerTrack ? mu.innerTrack()->normalizedChi2()  : -999; 
@@ -760,89 +825,77 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
       ntupleMu.isTrkHP                  = hasInnerTrack && mu.innerTrack()->quality(reco::TrackBase::highPurity) ? 1 : 0; 
 
       if ( mu.isMatchesValid() && ntupleMu.isTrackerArb )
-	{
-	  for ( reco::MuonChamberMatch match : mu.matches() )
-	    {
-	      muon_pog::ChambMatch ntupleMatch;
+      	{
+      	  for ( reco::MuonChamberMatch match : mu.matches() )
+      	    {
+      	      muon_pog::ChambMatch ntupleMatch;
 	      
-	      if ( getMuonChamberId(match.id,
-				    ntupleMatch.type,ntupleMatch.r,
-				    ntupleMatch.phi,ntupleMatch.eta)
-		   )
-		{
+      	      if ( getMuonChamberId(match.id,
+      				    ntupleMatch.type,ntupleMatch.r,
+      				    ntupleMatch.phi,ntupleMatch.eta)
+      		   )
+      		{
 	      
-		  ntupleMatch.x = mu.trackX(match.station(),match.detector());
-		  ntupleMatch.y = mu.trackY(match.station(),match.detector());
-		  ntupleMatch.dXdZ = mu.trackDxDz(match.station(),match.detector());
-		  ntupleMatch.dYdZ = mu.trackDyDz(match.station(),match.detector());
+      		  ntupleMatch.x = mu.trackX(match.station(),match.detector());
+      		  ntupleMatch.y = mu.trackY(match.station(),match.detector());
+      		  ntupleMatch.dXdZ = mu.trackDxDz(match.station(),match.detector());
+      		  ntupleMatch.dYdZ = mu.trackDyDz(match.station(),match.detector());
 
-		  ntupleMatch.errxTk = mu.trackXErr(match.station(),match.detector());
-		  ntupleMatch.erryTk = mu.trackYErr(match.station(),match.detector());
+      		  ntupleMatch.errxTk = mu.trackXErr(match.station(),match.detector());
+      		  ntupleMatch.erryTk = mu.trackYErr(match.station(),match.detector());
 
-		  ntupleMatch.errDxDzTk = mu.trackDxDzErr(match.station(),match.detector());
-		  ntupleMatch.errDyDzTk = mu.trackDyDzErr(match.station(),match.detector());
+      		  ntupleMatch.errDxDzTk = mu.trackDxDzErr(match.station(),match.detector());
+      		  ntupleMatch.errDyDzTk = mu.trackDyDzErr(match.station(),match.detector());
 	      
-		  ntupleMatch.dx = mu.dX(match.station(),match.detector());
-		  ntupleMatch.dy = mu.dY(match.station(),match.detector());
-		  ntupleMatch.dDxDz = mu.dDxDz(match.station(),match.detector());
-		  ntupleMatch.dDyDz = mu.dDxDz(match.station(),match.detector());
+      		  ntupleMatch.dx = mu.dX(match.station(),match.detector());
+      		  ntupleMatch.dy = mu.dY(match.station(),match.detector());
+      		  ntupleMatch.dDxDz = mu.dDxDz(match.station(),match.detector());
+      		  ntupleMatch.dDyDz = mu.dDxDz(match.station(),match.detector());
 		  
-		  ntupleMatch.errxSeg = mu.segmentXErr(match.station(),match.detector());
-		  ntupleMatch.errySeg = mu.segmentYErr(match.station(),match.detector());
-		  ntupleMatch.errDxDzSeg = mu.segmentDxDzErr(match.station(),match.detector());
-		  ntupleMatch.errDyDzSeg = mu.segmentDyDzErr(match.station(),match.detector());
+      		  ntupleMatch.errxSeg = mu.segmentXErr(match.station(),match.detector());
+      		  ntupleMatch.errySeg = mu.segmentYErr(match.station(),match.detector());
+      		  ntupleMatch.errDxDzSeg = mu.segmentDxDzErr(match.station(),match.detector());
+      		  ntupleMatch.errDyDzSeg = mu.segmentDyDzErr(match.station(),match.detector());
 		  
-		  ntupleMu.matches.push_back(ntupleMatch);
-		}
-	    }
-	}
+      		  ntupleMu.matches.push_back(ntupleMatch);
+      		}
+      	    }
+      	}
       
       ntupleMu.dxyBest  = -999; 
       ntupleMu.dzBest   = -999; 
       ntupleMu.dxyInner = -999; 
       ntupleMu.dzInner  = -999; 
 
-      ntupleMu.isoPflow04 = (pfIso04.sumChargedHadronPt+ 
-			     std::max(0.,pfIso04.sumPhotonEt+pfIso04.sumNeutralHadronEt - 0.5*pfIso04.sumPUPt)) / mu.pt();
-    
-      ntupleMu.isoPflow03 = (pfIso03.sumChargedHadronPt+ 
-			     std::max(0.,pfIso03.sumPhotonEt+pfIso03.sumNeutralHadronEt - 0.5*pfIso03.sumPUPt)) / mu.pt();
-
       double dxybs = isGlobal ? mu.globalTrack()->dxy(beamSpot->position()) :
-	hasInnerTrack ? mu.innerTrack()->dxy(beamSpot->position()) : -1000;
+      	hasInnerTrack ? mu.innerTrack()->dxy(beamSpot->position()) : -1000;
       double dzbs  = isGlobal ? mu.globalTrack()->dz(beamSpot->position()) :
-	hasInnerTrack ? mu.innerTrack()->dz(beamSpot->position()) : -1000;
+      	hasInnerTrack ? mu.innerTrack()->dz(beamSpot->position()) : -1000;
 
       double dxy = -1000.;
       double dz  = -1000.;
 
-      ntupleMu.isSoft    = 0;	  
-      ntupleMu.isTight   = 0;	  
-      ntupleMu.isHighPt  = 0;
-      ntupleMu.isLoose   = muon::isLooseMuon(mu)  ? 1 : 0;	  
-      ntupleMu.isMedium  = muon::isMediumMuon(mu) ? 1 : 0;	  
-
       if (vertexes->size() > 0)
-	{
-	  const reco::Vertex & vertex = vertexes->at(0);
+      	{
+      	  const reco::Vertex & vertex = vertexes->at(0);
 
-	  dxy = isGlobal ? mu.globalTrack()->dxy(vertex.position()) :
-	    hasInnerTrack ? mu.innerTrack()->dxy(vertex.position()) : -1000;
-	  dz = isGlobal ? mu.globalTrack()->dz(vertex.position()) :
-	    hasInnerTrack ? mu.innerTrack()->dz(vertex.position()) : -1000;
+      	  dxy = isGlobal ? mu.globalTrack()->dxy(vertex.position()) :
+      	    hasInnerTrack ? mu.innerTrack()->dxy(vertex.position()) : -1000;
+      	  dz = isGlobal ? mu.globalTrack()->dz(vertex.position()) :
+      	    hasInnerTrack ? mu.innerTrack()->dz(vertex.position()) : -1000;
  
-	  ntupleMu.dxyBest  = mu.muonBestTrack()->dxy(vertex.position()); 
-	  ntupleMu.dzBest   = mu.muonBestTrack()->dz(vertex.position()); 
-	  if(hasInnerTrack) { 
-	    ntupleMu.dxyInner = mu.innerTrack()->dxy(vertex.position()); 
-	    ntupleMu.dzInner  = mu.innerTrack()->dz(vertex.position()); 
-	  } 
+      	  ntupleMu.dxyBest  = mu.muonBestTrack()->dxy(vertex.position()); 
+      	  ntupleMu.dzBest   = mu.muonBestTrack()->dz(vertex.position()); 
+      	  if(hasInnerTrack) { 
+      	    ntupleMu.dxyInner = mu.innerTrack()->dxy(vertex.position()); 
+      	    ntupleMu.dzInner  = mu.innerTrack()->dz(vertex.position()); 
+      	  } 
 
-	  ntupleMu.isSoft    = muon::isSoftMuon(mu,vertex)   ? 1 : 0;	  
-	  ntupleMu.isTight   = muon::isTightMuon(mu,vertex)  ? 1 : 0;	  
-	  ntupleMu.isHighPt  = muon::isHighPtMuon(mu,vertex) ? 1 : 0;
+      	  ntupleMu.isSoft    = muon::isSoftMuon(mu,vertex)   ? 1 : 0;	  
+      	  ntupleMu.isTight   = muon::isTightMuon(mu,vertex)  ? 1 : 0;	  
+      	  ntupleMu.isHighPt  = muon::isHighPtMuon(mu,vertex) ? 1 : 0;
 
-	}
+      	}
 
       ntupleMu.dxy    = dxy;
       ntupleMu.dz     = dz;
@@ -853,54 +906,34 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
       ntupleMu.dzbs   = dzbs;
 
       if(mu.isTimeValid()) { 
-	ntupleMu.muonTimeDof = mu.time().nDof; 
-	ntupleMu.muonTime    = mu.time().timeAtIpInOut; 
-	ntupleMu.muonTimeErr = mu.time().timeAtIpInOutErr; 
+      	ntupleMu.muonTimeDof = mu.time().nDof; 
+      	ntupleMu.muonTime    = mu.time().timeAtIpInOut; 
+      	ntupleMu.muonTimeErr = mu.time().timeAtIpInOutErr; 
       } 
       else { 
-	ntupleMu.muonTimeDof = -999; 
-	ntupleMu.muonTime    = -999; 
-	ntupleMu.muonTimeErr = -999; 
+      	ntupleMu.muonTimeDof = -999; 
+      	ntupleMu.muonTime    = -999; 
+      	ntupleMu.muonTimeErr = -999; 
       } 
 
       if(mu.rpcTime().nDof > 0) { 
-	ntupleMu.muonRpcTimeDof = mu.rpcTime().nDof; 
-	ntupleMu.muonRpcTime    = mu.rpcTime().timeAtIpInOut; 
-	ntupleMu.muonRpcTimeErr = mu.rpcTime().timeAtIpInOutErr; 
+      	ntupleMu.muonRpcTimeDof = mu.rpcTime().nDof; 
+      	ntupleMu.muonRpcTime    = mu.rpcTime().timeAtIpInOut; 
+      	ntupleMu.muonRpcTimeErr = mu.rpcTime().timeAtIpInOutErr; 
       } 
       else { 
-	ntupleMu.muonRpcTimeDof = -999; 
-	ntupleMu.muonRpcTime    = -999; 
-	ntupleMu.muonRpcTimeErr = -999; 
+      	ntupleMu.muonRpcTimeDof = -999; 
+      	ntupleMu.muonRpcTime    = -999; 
+      	ntupleMu.muonRpcTimeErr = -999; 
       } 
 
-      // asking for a TRK or GLB muon with minimal pT cut
-      // ignoring STA muons in this logic
       if ( m_minMuPtCut < 0 ||
-	   (
-	    (isTracker || isGlobal || isStandAlone) &&
-	    (ntupleMu.fitPt(muon_pog::MuonFitType::DEFAULT) > m_minMuPtCut ||
-	     ntupleMu.fitPt(muon_pog::MuonFitType::GLB)     > m_minMuPtCut ||
-	     ntupleMu.fitPt(muon_pog::MuonFitType::TUNEP)   > m_minMuPtCut ||
-	     ntupleMu.fitPt(muon_pog::MuonFitType::INNER)   > m_minMuPtCut ||
-	     ntupleMu.fitPt(muon_pog::MuonFitType::STA)     > m_minMuPtCut ||
-	     ntupleMu.fitPt(muon_pog::MuonFitType::PICKY)   > m_minMuPtCut ||
-	     ntupleMu.fitPt(muon_pog::MuonFitType::DYT)     > m_minMuPtCut ||
-	     ntupleMu.fitPt(muon_pog::MuonFitType::TPFMS)   > m_minMuPtCut)
-	     )
-          )
-      {
-        event_.muons.push_back(ntupleMu);
+	   ( (isTracker || isGlobal || isStandAlone) && mu.pt() > m_minMuPtCut )
+	   )
+	{
+	  event_.muons.push_back(ntupleMu);
         
-        std::vector<Float_t> PTs = {ntupleMu.fitPt(muon_pog::MuonFitType::DEFAULT),
-				    ntupleMu.fitPt(muon_pog::MuonFitType::GLB),
-				    ntupleMu.fitPt(muon_pog::MuonFitType::TUNEP),
-				    ntupleMu.fitPt(muon_pog::MuonFitType::INNER),
-				    ntupleMu.fitPt(muon_pog::MuonFitType::PICKY),
-				    ntupleMu.fitPt(muon_pog::MuonFitType::DYT),
-				    ntupleMu.fitPt(muon_pog::MuonFitType::TPFMS)};
-        eventId_.maxPTs.push_back(*std::max_element(PTs.begin(), PTs.end()));
-      }
+	}
 
     }
 
@@ -908,18 +941,18 @@ Int_t MuonPogTreeProducer::fillMuons(const edm::Handle<edm::View<reco::Muon> > &
 
 }
 
-void MuonPogTreeProducer::fillJets(const edm::Handle<edm::View<reco::PFJet> > & jets)
+void MuonPogTreeProducer::fillJets(const edm::Handle<edm::View<pat::Jet> > & jets)
 {
   
   // std::cout << "Number of Jets: " << jets->size() << std::endl;
   // std::cout << "Number of Muons: " << event_.muons.size() << std::endl;
 
-  edm::View<reco::PFJet>::const_iterator jetIt  = jets->begin();
-  edm::View<reco::PFJet>::const_iterator jetEnd = jets->end();
+  edm::View<pat::Jet>::const_iterator jetIt  = jets->begin();
+  edm::View<pat::Jet>::const_iterator jetEnd = jets->end();
   
   for (; jetIt != jetEnd; ++jetIt) 
     {
-      const reco::PFJet& pfjet = (*jetIt);
+      const pat::Jet& pfjet = (*jetIt);
       muon_pog::PF04Jets ntupleJet;
       
       if (pfjet.pt()<20) continue;
