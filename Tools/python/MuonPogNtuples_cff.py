@@ -12,8 +12,24 @@ def appendMuonPogNtuple(process, runOnMC, processTag="HLT", ntupleFileName="Muon
         process.MuonPogTree.TrigSummaryTag = "hltTriggerSummaryAOD::"+processTag
 
     if runOnMC :
-        process.load("MuonPOGtreeProducer.Tools.PrunedGenParticles_cfi")
-        process.muonPogNtuple = cms.Sequence(process.prunedGenParticles + process.MuonPogTree)
+        # PUPPI Isolation
+        process.PUPPIMuonRelIso = cms.EDProducer('PuppiLeptonIsolation',
+                                                 srcLepton = cms.string( 'slimmedMuons' ),
+                                                 dR = cms.double( 0.4 ),
+                                                 mixFraction = cms.double( 0.5 ), 
+                                                 configuration = cms.string( "#detail#" )
+                                                 )
+
+        #process.load("MuonPOGtreeProducer.Tools.PrunedGenParticles_cfi")
+        #process.muonPogNtuple = cms.Sequence(process.prunedGenParticles + process.MuonPogTree)
+        #process.muonPogNtuple = cms.Sequence(process.MuonPogTree)        
+        # process.out = cms.OutputModule("PoolOutputModule",
+        #                                fileName = cms.untracked.string('myOutputFile.root'),
+        #                                outputCommands = cms.untracked.vstring(['keep *'])
+        #                                )
+        # process.muonPogNtuple = cms.Sequence(process.PUPPIMuonRelIso+process.MuonPogTree+process.out)
+        process.muonPogNtuple = cms.Sequence(process.PUPPIMuonRelIso+process.MuonPogTree)
+
     else :
         process.muonPogNtuple = cms.Sequence(process.MuonPogTree)
         process.MuonPogTree.PileUpInfoTag = cms.untracked.InputTag("none")
