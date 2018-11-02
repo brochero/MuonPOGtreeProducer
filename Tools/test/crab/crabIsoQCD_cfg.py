@@ -3,24 +3,13 @@ config = Configuration()
 
 config.section_('General')
 config.General.transferLogs = True
-#config.General.requestName = 'QCD_Pt-15to20_DRPremix-92X_upgrade2017_realistic_v10'
-#config.General.requestName = 'QCD_Pt-20to30_DRPremix-92X_upgrade2017_realistic_v10'
-#config.General.requestName = 'QCD_Pt-30to50_DRPremix-92X_upgrade2017_realistic_v10'
-#config.General.requestName = 'QCD_Pt-50to80_DRPremix-92X_upgrade2017_realistic_v10'
-#config.General.requestName = 'QCD_Pt-80to120_DRPremix-92X_upgrade2017_realistic_v10'
-#config.General.requestName = 'QCD_Pt-120to170_DRPremix-92X_upgrade2017_realistic_v10'
-#config.General.requestName = 'QCD_Pt-170to300_DRPremix-92X_upgrade2017_realistic_v10'
-#config.General.requestName = 'QCD_Pt-300to470_DRPremix-92X_upgrade2017_realistic_v10'
-#config.General.requestName = 'QCD_Pt-470to600_DRPremix-92X_upgrade2017_realistic_v10'
-#config.General.requestName = 'QCD_Pt-600to800_DRPremix-92X_upgrade2017_realistic_v10'
-config.General.requestName = 'QCD_Pt-800to1000_DRPremix-92X_upgrade2017_realistic_v10'
-#config.General.requestName = 'QCD_Pt-1000toInf_DRPremix-92X_upgrade2017_realistic_v10'
+config.General.requestName = 'QCD_RunIISpring18MiniAOD-100X_upgrade2018_realistic_v10-v1_OnlyTree'
 
 config.section_('JobType')
 config.JobType.pluginName  = 'Analysis'
-config.JobType.psetName    = '../muonPogNtuples_cfg.py'
-config.JobType.pyCfgParams = ['globalTag=92X_upgrade2017_realistic_v10',
-                              'ntupleName=muonPOGNtuple_IsolationStudies_QCD.root',
+config.JobType.psetName    = '../muonPogNtuples_miniAOD_cfg.py'
+config.JobType.pyCfgParams = ['globalTag=100X_upgrade2018_realistic_v10',
+                              'ntupleName=muonPOGNtuple_IsolationStudies18_DY.root',
                               'nEvents=-1',
                               'runOnMC=True',
                               'hltPathFilter=all',
@@ -30,24 +19,13 @@ config.JobType.pyCfgParams = ['globalTag=92X_upgrade2017_realistic_v10',
 config.JobType.allowUndistributedCMSSW = True  # To fix cmssw releases
 
 config.section_('Data')
-#config.Data.inputDataset = '/QCD_Pt-15to20_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-#config.Data.inputDataset = '/QCD_Pt-20to30_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-#config.Data.inputDataset = '/QCD_Pt-30to50_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-#config.Data.inputDataset = '/QCD_Pt-50to80_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-#config.Data.inputDataset = '/QCD_Pt-80to120_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-#config.Data.inputDataset = '/QCD_Pt-120to170_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-#config.Data.inputDataset = '/QCD_Pt-170to300_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-#config.Data.inputDataset = '/QCD_Pt-300to470_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-#config.Data.inputDataset = '/QCD_Pt-470to600_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-#config.Data.inputDataset = '/QCD_Pt-600to800_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-config.Data.inputDataset = '/QCD_Pt-800to1000_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
-#config.Data.inputDataset = '/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/RunIISummer17DRPremix-92X_upgrade2017_realistic_v10-v2/AODSIM'
+config.Data.inputDataset = '/QCD_Pt-20toInf_MuEnrichedPt15_TuneCP5_13TeV_pythia8/RunIISpring18MiniAOD-100X_upgrade2018_realistic_v10-v1/MINIAODSIM'
 
 config.Data.splitting    = 'FileBased'
-config.Data.unitsPerJob  = 10
+config.Data.unitsPerJob  = 1
 config.Data.inputDBS     = 'https://cmsweb.cern.ch/dbs/prod/global/DBSReader/'
 # config.Data.ignoreLocality  = True
-# config.Data.allowNonValidInputDataset = True
+config.Data.allowNonValidInputDataset = True
 
 config.section_('Site')
 config.Site.storageSite = 'T2_CH_CERN'
