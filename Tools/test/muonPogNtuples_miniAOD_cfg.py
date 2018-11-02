@@ -8,7 +8,7 @@ import sys
 options = VarParsing.VarParsing()
 
 options.register('globalTag',
-                 '80X_mcRun2_asymptotic_2016_v3', #default value
+                 '102X_upgrade2018_realistic_v12', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Global Tag")
@@ -26,7 +26,7 @@ options.register('eosInputFolder',
                  "EOS folder with input files")
 
 options.register('ntupleName',
-                 './muonPOGNtuple_miniAOD_8_0_3_RelValZMM_13.root', #default value
+                 './muonPOGNtuple_miniAOD_10_0_2_DY_13.root', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Folder and name ame for output ntuple")
@@ -88,7 +88,8 @@ process.source = cms.Source("PoolSource",
 )
 
 files = subprocess.check_output([ "/afs/cern.ch/project/eos/installation/0.3.15/bin/eos.select", "ls", options.eosInputFolder ])
-process.source.fileNames = [ options.eosInputFolder+"/"+f for f in files.split() ]    
+#process.source.fileNames = [ options.eosInputFolder+"/"+f for f in files.split() ]    
+process.source.fileNames = [ 'file:/afs/cern.ch/user/b/brochero/brochero_WorkArea/MuonPOG/MuonIsolation-100X/CMSSW_10_0_3/src/MuonPOGtreeProducer/Tools/test/InputTest_DY_102X_2018_MINIAODSIM.root' ]    
 
 process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
 process.load("Configuration.StandardSequences.MagneticField_38T_cff")
@@ -103,12 +104,15 @@ customiseHlt(process,pathCut,filterCut)
 customiseMuonCuts(process,options.minMuPt,options.minNMu)
 
 process.goodOfflinePrimaryVertices.src = cms.InputTag("offlineSlimmedPrimaryVertices")
-
-process.MuonPogTree.MuonTag = cms.untracked.InputTag("slimmedMuons")
-process.MuonPogTree.PrimaryVertexTag = cms.untracked.InputTag("offlineSlimmedPrimaryVertices")
-process.MuonPogTree.TrigResultsTag = cms.untracked.InputTag("none")
-process.MuonPogTree.TrigSummaryTag = cms.untracked.InputTag("none")
-process.MuonPogTree.PFMetTag = cms.untracked.InputTag("none")
-process.MuonPogTree.PFChMetTag = cms.untracked.InputTag("none")
-process.MuonPogTree.CaloMetTag = cms.untracked.InputTag("none")
-
+process.MuonPogTree.PrimaryVertexTag   = cms.untracked.InputTag("offlineSlimmedPrimaryVertices")
+process.MuonPogTree.GenTag             = cms.untracked.InputTag("prunedGenParticles")
+process.MuonPogTree.MuonTag            = cms.untracked.InputTag("slimmedMuons")
+process.MuonPogTree.PileUpInfoTag      = cms.untracked.InputTag("slimmedAddPileupInfo")
+process.MuonPogTree.JetTag             = cms.untracked.InputTag("slimmedJets")
+process.MuonPogTree.GenJetTag          = cms.untracked.InputTag("slimmedGenJets")
+process.MuonPogTree.TrigResultsTag     = cms.untracked.InputTag("none")
+process.MuonPogTree.TrigSummaryTag     = cms.untracked.InputTag("none")
+process.MuonPogTree.PFMetTag           = cms.untracked.InputTag("none")
+process.MuonPogTree.PFChMetTag         = cms.untracked.InputTag("none")
+process.MuonPogTree.CaloMetTag         = cms.untracked.InputTag("none")
+                             

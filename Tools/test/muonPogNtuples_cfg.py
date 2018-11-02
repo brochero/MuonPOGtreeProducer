@@ -7,7 +7,7 @@ import sys
 options = VarParsing.VarParsing()
 
 options.register('globalTag',
-                 '92X_upgrade2017_realistic_v10', #default value
+                 '100X_upgrade2018_realistic_v10', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Global Tag")
@@ -25,7 +25,7 @@ options.register('eosInputFolder',
                  "EOS folder with input files")
 
 options.register('ntupleName',
-                 './muonPOGNtuple_92X_RelValZMM_13.root', #default value
+                 './muonPOGNtuple_miniAOD_10_0_3_DY_13.root', #default value
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Folder and name ame for output ntuple")
@@ -92,7 +92,7 @@ process.source = cms.Source("PoolSource",
 
 files = subprocess.check_output([ "/afs/cern.ch/project/eos/installation/0.3.15/bin/eos.select", "ls", options.eosInputFolder ])
 #process.source.fileNames = [ options.eosInputFolder+"/"+f for f in files.split() ]  
-process.source.fileNames = [ 'file:/afs/cern.ch/user/b/brochero/brochero_WorkArea/MuonPOG/MuonIsolation-92X/CMSSW_9_2_8/src/MuonPOGtreeProducer/Tools/test/DY_0005456C-9A98-E711-B14E-0242AC11000D.root' ]
+process.source.fileNames = [ 'file:/afs/cern.ch/user/b/brochero/brochero_WorkArea/MuonPOG/MuonIsolation-100X/CMSSW_10_0_3/src/MuonPOGtreeProducer/Tools/test/DYJets_13TeV_RunII2018_AODSIM.root' ]
 
 process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
 process.load("Configuration.StandardSequences.MagneticField_38T_cff")
